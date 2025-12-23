@@ -39,6 +39,7 @@ export default function TrackPlayer({
     // Initialize WaveSurfer
     useEffect(() => {
         isMountedRef.current = true;
+        let activeWs: WaveSurfer | null = null;
 
         if (!containerRef.current) return;
 
@@ -46,50 +47,64 @@ export default function TrackPlayer({
             color.includes('purple') ? 'rgba(168, 85, 247, 0.6)' :
                 'rgba(6, 182, 212, 0.6)';
 
-        const ws = WaveSurfer.create({
-            container: containerRef.current,
-            waveColor: baseColor,
-            progressColor: 'transparent',
-            cursorColor: 'transparent',
-            barWidth: 2,
-            barGap: 2,
-            barRadius: 2,
-            height: 80,
-            normalize: true,
-            interact: false,
-        });
+        try {
+            activeWs = WaveSurfer.create({
+                container: containerRef.current,
+                waveColor: baseColor,
+                progressColor: 'transparent',
+                cursorColor: 'transparent',
+                barWidth: 2,
+                barGap: 2,
+                barRadius: 2,
+                height: 80,
+                normalize: true,
+                interact: false,
+            });
 
-        wavesurferRef.current = ws;
+            wavesurferRef.current = activeWs;
 
-        // Event listeners
-        ws.on('ready', () => {
-            if (!isMountedRef.current) return;
-            setIsReady(true);
-            const duration = ws.getDuration();
-            if (onReady) onReady(duration);
-        });
+            // Event listeners
+            activeWs.on('ready', () => {
+                if (!isMountedRef.current || !activeWs) return;
+                setIsReady(true);
+                try {
+                    const duration = activeWs.getDuration();
+                    if (onReady) onReady(duration);
+                } catch (e) {
+                    // Ignore duration errors
+                }
+            });
 
-        ws.on('audioprocess', (currentTime) => {
-            if (!isMountedRef.current) return;
-            if (onProgress) onProgress(currentTime);
-        });
+            activeWs.on('audioprocess', (currentTime) => {
+                if (!isMountedRef.current || !activeWs) return;
+                if (onProgress) onProgress(currentTime);
+            });
 
-        ws.on('error', (err) => {
-            if (!isMountedRef.current) return;
-            console.warn('WaveSurfer:', err);
-        });
+            activeWs.on('error', (err) => {
+                if (!isMountedRef.current) return;
+                console.warn('WaveSurfer warn:', err);
+                // Recover from error state
+                setIsReady(true);
+            });
 
-        // Load audio after setup
-        ws.load(url);
+            // Load audio
+            activeWs.load(url);
+
+        } catch (e) {
+            console.error("Failed to init WaveSurfer", e);
+        }
 
         return () => {
             isMountedRef.current = false;
-            if (wavesurferRef.current) {
+
+            if (activeWs) {
                 try {
-                    wavesurferRef.current.destroy();
+                    activeWs.unAll();
+                    activeWs.destroy();
                 } catch (e) {
-                    // Ignore cleanup errors
+                    console.debug("Cleanup ignore", e);
                 }
+                activeWs = null;
                 wavesurferRef.current = null;
             }
         };
