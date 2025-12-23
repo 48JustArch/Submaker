@@ -48,20 +48,18 @@ export default function TrackPlayer({
         const ws = WaveSurfer.create({
             container: containerRef.current,
             waveColor: baseColor,
-            progressColor: 'transparent', // Hide progress to avoid blue line - we use global playhead
+            progressColor: 'transparent',
             cursorColor: 'transparent',
             barWidth: 2,
             barGap: 2,
             barRadius: 2,
             height: 80,
             normalize: true,
-            url: url,
             interact: false,
-            // Performance optimizations
-            backend: 'MediaElement', // Much faster loading than WebAudio
-            mediaControls: false,
-            minPxPerSec: 1, // Lower resolution for faster rendering
         });
+
+        // Load audio separately
+        ws.load(url);
 
         // Event listeners
         ws.on('ready', () => {
