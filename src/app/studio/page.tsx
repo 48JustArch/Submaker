@@ -165,16 +165,23 @@ export default function StudioPage() {
 
                                     {/* Waveform Visualization */}
                                     <div className="absolute inset-0 flex items-center px-4 opacity-50">
-                                        {Array.from({ length: 60 }).map((_, i) => (
-                                            <div
-                                                key={i}
-                                                className={`flex-1 mx-[1px] rounded-full ${track.color}`}
-                                                style={{
-                                                    height: `${30 + Math.random() * 50}%`,
-                                                    opacity: 0.3 + Math.random() * 0.7
-                                                }}
-                                            />
-                                        ))}
+                                        {Array.from({ length: 60 }).map((_, i) => {
+                                            // Deterministic pseudo-random generation to avoid hydration mismatch
+                                            const seed = i + parseInt(track.id) * 100;
+                                            const height = 30 + (seed % 50);
+                                            const opacity = 0.3 + (seed % 7) / 10;
+
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    className={`flex-1 mx-[1px] rounded-full ${track.color}`}
+                                                    style={{
+                                                        height: `${height}%`,
+                                                        opacity: opacity
+                                                    }}
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
