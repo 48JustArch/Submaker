@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+/* ========================================
+   SUBLIMINAL SCALAR - CLEAN & COOL SYSTEM
+   ======================================== */
+
+:root {
+  /* Ultra-Clean Palette */
+  --bg-page: #050505;
+  /* Almost Black */
+  --bg-card: #0F0F0F;
+  /* Slightly Lighter */
+  --bg-surface: #1A1A1A;
+  /* Interactive Surface */
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #888888;
+  --text-tertiary: #444444;
+
+  /* Single Electric Accent */
+  --accent: #7C3AED;
+  /* Electric Violet */
+  --accent-glow: rgba(124, 58, 237, 0.4);
+
+  /* Borders */
+  --border: #222222;
+  --border-active: #444444;
+}
+
+@theme inline {
+  --color-page: var(--bg-page);
+  --color-card: var(--bg-card);
+  --color-surface: var(--bg-surface);
+
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-tertiary: var(--text-tertiary);
+
+  --color-accent: var(--accent);
+
+  --font-sans: var(--font-geist-sans);
+}
+
+/* Global Reset & Typography */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  antialiased: true;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Typography Scale - Brutalist & Clean */
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: -0.03em;
+}
+
+.display-text {
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.heading-xl {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.heading-lg {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.text-body {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* UI Elements */
+.btn-new {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 40px;
+  height: 56px;
+  border-radius: 99px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.btn-primary-new {
+  background: white;
+  color: black;
+}
+
+.btn-primary-new:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px -10px rgba(255, 255, 255, 0.3);
+}
+
+.btn-ghost-new {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-ghost-new:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+}
+
+.card-clean {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 32px;
+  padding: 40px;
+  transition: all 0.4s ease;
+}
+
+.card-clean:hover {
+  border-color: var(--border-active);
+  transform: translateY(-5px);
+}
