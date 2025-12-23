@@ -8,12 +8,12 @@ interface TrackPlayerProps {
     url: string;
     name: string;
     color: string;
-    volume: number; // 0-1
-    speed: number; // 0.5-2
+    volume: number;
+    speed: number;
     muted: boolean;
     solo: boolean;
     isPlaying: boolean;
-    widthPercent?: number; // 0-100, for relative sizing
+    widthPercent?: number;
     onReady?: (duration: number) => void;
     onProgress?: (time: number) => void;
 }
@@ -34,13 +34,14 @@ export default function TrackPlayer({
     const containerRef = useRef<HTMLDivElement>(null);
     const wavesurferRef = useRef<WaveSurfer | null>(null);
     const [isReady, setIsReady] = useState(false);
+    const isMountedRef = useRef(true);
 
     // Initialize WaveSurfer
     useEffect(() => {
+        isMountedRef.current = true;
+
         if (!containerRef.current) return;
 
-        // Create instance
-        // Get waveform color based on track color
         const baseColor = color.includes('blue') ? 'rgba(59, 130, 246, 0.6)' :
             color.includes('purple') ? 'rgba(168, 85, 247, 0.6)' :
                 'rgba(6, 182, 212, 0.6)';
@@ -58,30 +59,41 @@ export default function TrackPlayer({
             interact: false,
         });
 
-        // Load audio separately
-        ws.load(url);
+        wavesurferRef.current = ws;
 
         // Event listeners
         ws.on('ready', () => {
+            if (!isMountedRef.current) return;
             setIsReady(true);
             const duration = ws.getDuration();
             if (onReady) onReady(duration);
         });
 
         ws.on('audioprocess', (currentTime) => {
+            if (!isMountedRef.current) return;
             if (onProgress) onProgress(currentTime);
         });
 
-        ws.on('finish', () => {
-            // Optional: Handle finish
+        ws.on('error', (err) => {
+            if (!isMountedRef.current) return;
+            console.warn('WaveSurfer:', err);
         });
 
-        wavesurferRef.current = ws;
+        // Load audio after setup
+        ws.load(url);
 
         return () => {
-            ws.destroy();
+            isMountedRef.current = false;
+            if (wavesurferRef.current) {
+                try {
+                    wavesurferRef.current.destroy();
+                } catch (e) {
+                    // Ignore cleanup errors
+                }
+                wavesurferRef.current = null;
+            }
         };
-    }, [url, color]); // Keep deps minimal to avoid re-init
+    }, [url, color]);
 
     // Handle Play/Pause
     useEffect(() => {
@@ -108,7 +120,6 @@ export default function TrackPlayer({
 
     return (
         <div className="h-full flex flex-col justify-center relative bg-black/20" style={{ width: `${widthPercent}%` }}>
-            {/* We use a hidden container for the initial load if needed, but here we just show it */}
             <div ref={containerRef} className="w-full" />
             {!isReady && (
                 <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500 bg-black/50 backdrop-blur-sm z-10">
