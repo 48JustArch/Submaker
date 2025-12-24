@@ -11,7 +11,7 @@ export default function Hero() {
             <NeuralBackground />
 
             {/* Glow Effect */}
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-purple-900/20 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-900/20 blur-[120px] rounded-full pointer-events-none" />
 
             <div className="relative z-10 max-w-5xl mx-auto text-center space-y-10">
 
@@ -22,8 +22,8 @@ export default function Hero() {
                     transition={{ duration: 0.6 }}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-md"
                 >
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    <span className="text-sm font-medium text-gray-400 tracking-wide uppercase">Submaker Engine v2.0 Online</span>
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
+                    <span className="text-sm font-medium text-cyan-100/70 tracking-widest uppercase text-[10px]">Architect Your Reality</span>
                 </motion.div>
 
                 {/* Massive Type */}
@@ -31,7 +31,7 @@ export default function Hero() {
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.1 }}
-                    className="display-text bg-clip-text text-transparent bg-gradient-to-b from-white to-white/50"
+                    className="text-6xl md:text-8xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/40 leading-[1.1]"
                 >
                     Design your <br />
                     subconscious.
@@ -42,10 +42,10 @@ export default function Hero() {
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.2 }}
-                    className="text-body max-w-2xl mx-auto text-lg md:text-xl"
+                    className="max-w-xl mx-auto text-lg md:text-xl text-gray-400 font-light leading-relaxed"
                 >
-                    The first audio engine that combines subliminal masking, morphic resonance,
-                    and scalar waves into a unified programming language for your mind.
+                    Rewrite the source code of your existence. <br className="hidden md:block" />
+                    A precision instrument for the awakened mind.
                 </motion.p>
 
                 {/* Minimal Action Area */}

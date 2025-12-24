@@ -1,108 +1,42 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-
-interface Particle {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    size: number;
-}
+import { motion } from 'framer-motion';
 
 export default function NeuralBackground() {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        let particles: Particle[] = [];
-        let animationFrameId: number;
-        let width = 0;
-        let height = 0;
-
-        const resize = () => {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
-            initParticles();
-        };
-
-        const initParticles = () => {
-            particles = [];
-            const particleCount = Math.min(Math.floor(width * height / 15000), 100); // Density control
-
-            for (let i = 0; i < particleCount; i++) {
-                particles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    vx: (Math.random() - 0.5) * 0.5, // Slow movement
-                    vy: (Math.random() - 0.5) * 0.5,
-                    size: Math.random() * 2 + 1,
-                });
-            }
-        };
-
-        const draw = () => {
-            ctx.clearRect(0, 0, width, height);
-
-            // Update and draw particles
-            ctx.fillStyle = 'rgba(121, 40, 202, 0.5)'; // Purple tint
-
-            particles.forEach((p, i) => {
-                p.x += p.vx;
-                p.y += p.vy;
-
-                // Bounce off edges
-                if (p.x < 0 || p.x > width) p.vx *= -1;
-                if (p.y < 0 || p.y > height) p.vy *= -1;
-
-                // Draw particle
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Connect particles
-                for (let j = i + 1; j < particles.length; j++) {
-                    const p2 = particles[j];
-                    const dx = p.x - p2.x;
-                    const dy = p.y - p2.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance < 150) {
-                        ctx.beginPath();
-                        ctx.strokeStyle = `rgba(121, 40, 202, ${0.15 * (1 - distance / 150)})`;
-                        ctx.lineWidth = 1;
-                        ctx.moveTo(p.x, p.y);
-                        ctx.lineTo(p2.x, p2.y);
-                        ctx.stroke();
-                    }
-                }
-            });
-
-            animationFrameId = requestAnimationFrame(draw);
-        };
-
-        window.addEventListener('resize', resize);
-        resize();
-        draw();
-
-        return () => {
-            window.removeEventListener('resize', resize);
-            cancelAnimationFrame(animationFrameId);
-        };
-    }, []);
-
     return (
-        <canvas
-            ref={canvasRef}
-            className="absolute inset-0 z-0 pointer-events-none opacity-60"
-            style={{ mixBlendMode: 'screen' }}
-        />
+        <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center">
+            {/* Core Energy */}
+            <motion.div
+                animate={{
+                    scale: [0.8, 1.1, 0.8],
+                    opacity: [0.4, 0.6, 0.4],
+                    rotate: [0, 90, 0]
+                }}
+                transition={{
+                    duration: 10,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                }}
+                className="absolute w-[60vw] h-[60vw] max-w-[800px] max-h-[800px] bg-gradient-to-tr from-cyan-500/20 via-blue-500/20 to-purple-500/20 rounded-full blur-[100px] mix-blend-screen"
+            />
+
+            {/* Secondary Pulse */}
+            <motion.div
+                animate={{
+                    scale: [1.2, 1, 1.2],
+                    opacity: [0.3, 0.5, 0.3],
+                }}
+                transition={{
+                    duration: 15,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 2
+                }}
+                className="absolute w-[50vw] h-[50vw] max-w-[600px] max-h-[600px] bg-blue-600/10 rounded-full blur-[80px] mix-blend-screen"
+            />
+
+            {/* Subtle Aura */}
+            <div className="absolute inset-0 bg-gradient-radial from-transparent via-[#000000]/80 to-[#000000] z-0" />
+        </div>
     );
 }

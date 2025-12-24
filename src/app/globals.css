@@ -50,8 +50,8 @@ body {
   background-color: var(--bg-page);
   color: var(--text-primary);
   font-family: var(--font-sans), system-ui, sans-serif;
-  antialiased: true;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Typography Scale - Brutalist & Clean */
@@ -131,4 +131,105 @@ h4 {
 .card-clean:hover {
   border-color: var(--border-active);
   transform: translateY(-5px);
+}
+
+/* ========================================
+   STUDIO UI SYSTEM (PREMIUM)
+   ======================================== */
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-black/40 backdrop-blur-xl border border-white/5 shadow-2xl;
+  }
+
+  .glass-header {
+    @apply bg-black/20 backdrop-blur-md border-b border-white/5;
+  }
+
+  .studio-btn {
+    @apply relative flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 overflow-hidden;
+  }
+
+  .studio-btn-primary {
+    @apply bg-white text-black hover:bg-gray-200 hover:scale-105;
+    box-shadow: 0 0 0 transparent;
+  }
+
+  .studio-btn-primary:hover {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  }
+
+  .studio-btn-ghost {
+    @apply bg-white/5 text-gray-300 border border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20;
+  }
+
+  .studio-btn-icon {
+    @apply p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors duration-200;
+  }
+
+  .glow-text {
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+  }
+}
+
+/* Keyframe Animations */
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 10px var(--accent-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 25px var(--accent-glow);
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s infinite ease-in-out;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Custom Scrollbar for Studio */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
