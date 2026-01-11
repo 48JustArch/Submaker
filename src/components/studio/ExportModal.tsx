@@ -58,6 +58,7 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
     const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [format, setFormat] = useState<'wav' | 'mp4'>('wav');
+    const [fileExtension, setFileExtension] = useState<string>('wav');
 
     useEffect(() => {
         if (!isOpen) {
@@ -68,8 +69,13 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
             setError(null);
             setStatusMessage('Initializing...');
             setFormat('wav');
+            setFileExtension('wav');
+        } else {
+            // Auto-select format based on content
+            const hasVisuals = tracks.some(t => t.type === 'video' || t.type === 'image');
+            if (hasVisuals) setFormat('mp4');
         }
-    }, [isOpen]);
+    }, [isOpen, tracks]);
 
     const finishExport = async (url: string) => {
         setDownloadUrl(url);
@@ -162,6 +168,14 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
             if (format === 'mp4') {
                 setStatusMessage('Initializing video recorder...');
 
+                let mimeType = 'video/webm;codecs=vp9';
+                let ext = 'webm';
+                if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4')) {
+                    mimeType = 'video/mp4';
+                    ext = 'mp4';
+                }
+                setFileExtension(ext);
+
                 const canvas = document.createElement('canvas');
                 canvas.width = 1920;
                 canvas.height = 1080;
@@ -205,7 +219,7 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
                     ...dest.stream.getAudioTracks()
                 ]);
 
-                const recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 8000000 });
+                const recorder = new MediaRecorder(combinedStream, { mimeType, videoBitsPerSecond: 8000000 });
                 const chunks: Blob[] = [];
                 recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
@@ -239,7 +253,7 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
                 await new Promise(r => recorder.onstop = r);
                 actx.close();
 
-                await finishExport(URL.createObjectURL(new Blob(chunks, { type: 'video/webm' })));
+                await finishExport(URL.createObjectURL(new Blob(chunks, { type: mimeType })));
             }
 
         } catch (err: any) {
@@ -255,7 +269,7 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = downloadUrl;
-            a.download = format === 'wav' ? 'subliminal_mix.wav' : 'subliminal_video.webm';
+            a.download = format === 'wav' ? 'subliminal_mix.wav' : `subliminal_video.${fileExtension}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
