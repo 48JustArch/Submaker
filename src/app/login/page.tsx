@@ -2,9 +2,72 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+    const router = useRouter();
+    const supabase = createClient();
+
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                },
+            });
+            if (error) throw error;
+        } catch (error) {
+            console.error(error);
+            setError((error as Error).message);
+            setLoading(false);
+        }
+    };
+
+    const handleEmailAuth = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        try {
+            if (mode === 'signup') {
+                const { error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    }
+                });
+                if (error) throw error;
+                // Check if session usually created immediately or requires confirmation
+                alert('Account created! Please check your email to verify.');
+            } else {
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                router.push('/dashboard');
+                router.refresh();
+            }
+        } catch (error) {
+            console.error(error);
+            setError((error as Error).message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 relative overflow-hidden">
             {/* Background Glow */}
@@ -25,10 +88,18 @@ export default function LoginPage() {
 
                 {/* Card */}
                 <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
-                    <h1 className="text-2xl font-bold text-white mb-2 text-center">Welcome back</h1>
-                    <p className="text-gray-500 text-center mb-8">Enter your frequency workspace</p>
+                    <h1 className="text-2xl font-bold text-white mb-2 text-center">
+                        {mode === 'signin' ? 'Welcome back' : 'Create an account'}
+                    </h1>
+                    <p className="text-gray-500 text-center mb-8">
+                        {mode === 'signin' ? 'Enter your frequency workspace' : 'Start your journey today'}
+                    </p>
 
-                    <button className="w-full h-12 bg-white text-black font-semibold rounded-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors mb-6 group">
+                    <button
+                        onClick={handleGoogleLogin}
+                        disabled={loading}
+                        className="w-full h-12 bg-white text-black font-semibold rounded-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors mb-6 group disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                             <path
                                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -47,7 +118,7 @@ export default function LoginPage() {
                                 fill="#EA4335"
                             />
                         </svg>
-                        Continue with Google
+                        {mode === 'signin' ? 'Continue with Google' : 'Sign up with Google'}
                         <ArrowRight className="w-4 h-4 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-black" />
                     </button>
 
@@ -60,19 +131,57 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    <form className="space-y-4">
+                    <form onSubmit={handleEmailAuth} className="space-y-4">
+                        {error && (
+                            <div className="p-3 text-sm text-red-400 bg-red-900/10 border border-red-900/20 rounded-lg">
+                                {error}
+                            </div>
+                        )}
                         <div>
                             <input
                                 type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 placeholder="name@example.com"
                                 className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
-                                disabled
+                                required
                             />
                         </div>
-                        <button disabled className="w-full h-12 bg-white/5 text-gray-400 font-semibold rounded-xl cursor-not-allowed">
-                            Continue (Coming Soon)
+                        <div>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="password"
+                                className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
+                                required
+                                minLength={6}
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full h-12 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {mode === 'signin' ? 'Sign In' : 'Create Account'}
                         </button>
                     </form>
+
+                    <div className="mt-6 text-center text-sm">
+                        <span className="text-gray-500">
+                            {mode === 'signin' ? "Don't have an account?" : "Already have an account?"}
+                        </span>
+                        <button
+                            onClick={() => {
+                                setMode(mode === 'signin' ? 'signup' : 'signin');
+                                setError(null);
+                            }}
+                            className="ml-2 text-white hover:underline font-medium focus:outline-none"
+                        >
+                            {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                        </button>
+                    </div>
                 </div>
 
                 <p className="text-center mt-8 text-sm text-gray-600">
