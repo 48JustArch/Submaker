@@ -78,22 +78,28 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
     }, [isOpen, tracks]);
 
     const finishExport = async (url: string) => {
-        setDownloadUrl(url);
-        setProgress(100);
+        try {
+            setDownloadUrl(url);
+            setProgress(100);
 
-        // Finalize session immediately
-        if (sessionId && userId) {
-            try {
-                const audioType = format === 'wav' ? 'wav' : 'mp4';
-                await closeSession(sessionId, url, audioType);
-                await incrementGenerationCount(userId);
-            } catch (e) {
-                console.error("Failed to save session state:", e);
+            // Finalize session immediately
+            if (sessionId && userId) {
+                // Non-blocking DB update
+                try {
+                    const audioType = format === 'wav' ? 'wav' : 'mp4';
+                    await closeSession(sessionId, url, audioType);
+                    await incrementGenerationCount(userId);
+                } catch (e) {
+                    console.error("Failed to save session state:", e);
+                }
             }
+        } catch (err) {
+            console.error("Critical export error:", err);
+        } finally {
+            // Always show completion screen
+            setStep('complete');
+            setIsExporting(false);
         }
-
-        setStep('complete');
-        setIsExporting(false);
     };
 
     const performExport = async () => {

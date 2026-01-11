@@ -167,7 +167,7 @@ export async function closeSession(sessionId: string, audioUrl: string, audioTyp
         .eq('id', sessionId)
 
     if (error) {
-        console.error('Error closing session:', error)
+        console.error('Error closing session:', error.message || error)
         return false
     }
     return true

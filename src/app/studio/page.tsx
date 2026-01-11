@@ -175,7 +175,14 @@ function StudioContent() {
         tracks.forEach(track => {
             if (track.type === 'audio' && track.url && !audioRefs.current.has(track.id)) {
                 const audio = new Audio(track.url);
+                audio.crossOrigin = "anonymous"; // Enable cross-origin playback
                 audio.volume = track.volume / 100;
+
+                // Add error listener
+                audio.onerror = (e) => {
+                    console.error(`Audio playback error for track ${track.name}:`, audio.error);
+                };
+
                 audioRefs.current.set(track.id, audio);
             }
         });
@@ -201,15 +208,19 @@ function StudioContent() {
                 if (track.type === 'audio') {
                     const audio = audioRefs.current.get(track.id);
                     if (audio) {
-                        // Determine if this track should play:
-                        // - If any track is solo'd, only play solo'd tracks
-                        // - Otherwise, play all non-muted tracks
                         const shouldPlay = hasSoloTrack ? track.isSolo : !track.isMuted;
 
                         if (shouldPlay) {
-                            audio.currentTime = currentTime;
+                            if (Math.abs(audio.currentTime - currentTime) > 0.2) {
+                                audio.currentTime = currentTime;
+                            }
                             audio.volume = track.volume / 100;
-                            audio.play().catch(() => { }); // Ignore autoplay errors
+                            const playPromise = audio.play();
+                            if (playPromise !== undefined) {
+                                playPromise.catch(error => {
+                                    console.warn("Audio play failed (autopolicies?):", error);
+                                });
+                            }
                         } else {
                             audio.pause();
                         }
