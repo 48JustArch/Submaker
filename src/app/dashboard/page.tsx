@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Clock, PlayCircle, Download, LogOut, Settings, Shield } from 'lucide-react';
+import { Plus, Clock, PlayCircle, Download, LogOut, Settings, Shield, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { getUserSessions, ensureUserProfile, type AudioGeneration, type UserProfile } from '@/lib/supabase/sessions';
+import { getUserSessions, ensureUserProfile, deleteSession, type AudioGeneration, type UserProfile } from '@/lib/supabase/sessions';
 
 export default function Dashboard() {
     const [user, setUser] = useState<{ id: string; email?: string; user_metadata?: { full_name?: string; avatar_url?: string } } | null>(null);
@@ -82,6 +82,17 @@ export default function Dashboard() {
             link.href = session.audio_url;
             link.download = `${session.title}.${session.audio_type || 'mp3'}`;
             link.click();
+        }
+    };
+
+    const handleDelete = async (sessionId: string) => {
+        if (confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
+            const success = await deleteSession(sessionId);
+            if (success) {
+                setSessions(prev => prev.filter(s => s.id !== sessionId));
+            } else {
+                alert('Failed to delete session');
+            }
         }
     };
 
@@ -258,6 +269,14 @@ export default function Dashboard() {
                                                 Continue
                                             </Link>
                                         ) : null}
+
+                                        <button
+                                            onClick={() => handleDelete(session.id)}
+                                            className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-red-500 transition-colors"
+                                            title="Delete Session"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
                             ))

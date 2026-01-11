@@ -217,3 +217,19 @@ export async function toggleUserBan(userId: string, shouldBan: boolean): Promise
     }
     return true
 }
+
+// Delete a session
+export async function deleteSession(sessionId: string): Promise<boolean> {
+    const supabase = createClient()
+
+    const { error } = await supabase
+        .from('audio_generations')
+        .delete()
+        .eq('id', sessionId)
+
+    if (error) {
+        console.error('Error deleting session:', error)
+        return false
+    }
+    return true
+}
