@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { getUserSessions, ensureUserProfile, type AudioGeneration, type UserProfile } from '@/lib/supabase/sessions';
 
 export default function Dashboard() {
-    const [user, setUser] = useState<{ id: string; email: string; user_metadata?: { full_name?: string } } | null>(null);
+    const [user, setUser] = useState<{ id: string; email?: string; user_metadata?: { full_name?: string; avatar_url?: string } } | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [sessions, setSessions] = useState<AudioGeneration[]>([]);
     const [loading, setLoading] = useState(true);
@@ -232,12 +232,12 @@ export default function Dashboard() {
                                     <div className="flex items-center gap-4">
                                         <span className={`px-3 py-1 text-xs font-bold rounded-full border
                                             ${session.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                                (session.status === 'draft' || session.status === 'pending') ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                                session.status === 'draft' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
                                                     session.status === 'processing' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                                                         session.status === 'failed' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
                                                             'bg-gray-500/10 text-gray-500 border-white/5'}`}>
                                             {session.status === 'completed' ? 'Done' :
-                                                (session.status === 'draft' || session.status === 'pending') ? 'Draft' :
+                                                session.status === 'draft' ? 'Draft' :
                                                     session.status === 'processing' ? 'Processing' :
                                                         session.status === 'failed' ? 'Failed' : session.status}
                                         </span>

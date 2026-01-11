@@ -10,7 +10,7 @@ export interface AudioGeneration {
     duration_seconds: number | null
     status: 'draft' | 'processing' | 'completed' | 'failed'
     metadata: Record<string, unknown> | null
-    audio_type: 'mp3' | 'mp4' | null
+    audio_type: 'mp3' | 'mp4' | 'wav' | null
     audio_url: string | null
     is_closed: boolean
 }
@@ -153,7 +153,7 @@ export async function ensureUserProfile(userId: string, email: string, name?: st
 }
 
 // Close session after export
-export async function closeSession(sessionId: string, audioUrl: string, audioType: 'mp3' | 'mp4'): Promise<boolean> {
+export async function closeSession(sessionId: string, audioUrl: string, audioType: 'mp3' | 'mp4' | 'wav'): Promise<boolean> {
     const supabase = createClient()
 
     const { error } = await supabase

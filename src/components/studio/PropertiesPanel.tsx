@@ -96,11 +96,11 @@ export default function PropertiesPanel({ selectedTrack, onUpdateTrack, onDelete
                                         <div className="grid grid-cols-2 gap-3 text-[10px] font-mono">
                                             <div className="bg-[#141414] p-3 rounded-lg border border-white/[0.04] hover:border-white/[0.1] transition-colors">
                                                 <div className="text-gray-500 mb-1 flex items-center gap-1.5"><Activity className="w-3 h-3" /> START</div>
-                                                <div className="text-white text-sm font-medium">{formatTime(selectedTrack.startTime)}</div>
+                                                <div className="text-white text-sm font-medium">{formatTime(selectedTrack.startTime || 0)}</div>
                                             </div>
                                             <div className="bg-[#141414] p-3 rounded-lg border border-white/[0.04] hover:border-white/[0.1] transition-colors">
                                                 <div className="text-gray-500 mb-1 flex items-center gap-1.5"><Maximize2 className="w-3 h-3" /> DURATION</div>
-                                                <div className="text-white text-sm font-medium">{formatTime(selectedTrack.duration)}</div>
+                                                <div className="text-white text-sm font-medium">{formatTime(selectedTrack.duration || 0)}</div>
                                             </div>
                                         </div>
                                     </div>

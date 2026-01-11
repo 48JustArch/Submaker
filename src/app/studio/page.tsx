@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { Folder, Sliders } from 'lucide-react';
 import StudioHeader from '@/components/studio/StudioHeader';
 import MediaLibrary from '@/components/studio/MediaLibrary';
@@ -28,7 +28,7 @@ interface SessionData {
     savedAt: string;
 }
 
-export default function StudioPage() {
+function StudioContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const supabase = createClient();
@@ -686,5 +686,17 @@ export default function StudioPage() {
                 onClose={() => setShowSettingsModal(false)}
             />
         </motion.div>
+    );
+}
+
+export default function StudioPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
+                <div className="animate-spin w-8 h-8 border-2 border-white border-t-transparent rounded-full" />
+            </div>
+        }>
+            <StudioContent />
+        </Suspense>
     );
 }

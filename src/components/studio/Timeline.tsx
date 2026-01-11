@@ -92,8 +92,8 @@ export default function Timeline({
         const interval = zoom > 100 ? 1 : zoom > 50 ? 5 : zoom > 10 ? 10 : 30; // Seconds between major ticks
         const maxTime = Math.max(
             300,
-            ...tracks.map(t => t.startTime + getEffectiveDuration(t)) + 60
-        );
+            ...tracks.map(t => (t.startTime || 0) + getEffectiveDuration(t))
+        ) + 60;
 
         for (let t = 0; t <= maxTime; t += interval) {
             markers.push({ time: t, x: t * zoom });
@@ -196,9 +196,9 @@ export default function Timeline({
             trackId,
             handle,
             startX: e.clientX,
-            initialInPoint: track.inPoint,
-            initialOutPoint: track.outPoint,
-            initialStartTime: track.startTime
+            initialInPoint: track.inPoint || 0,
+            initialOutPoint: track.outPoint || track.duration,
+            initialStartTime: track.startTime || 0
         });
     };
 
@@ -213,7 +213,7 @@ export default function Timeline({
         setTrackDrag({
             trackId,
             startX: e.clientX,
-            initialStartTime: track.startTime
+            initialStartTime: track.startTime || 0
         });
     };
 
@@ -231,12 +231,12 @@ export default function Timeline({
                     const newStartTime = trimDrag.initialStartTime + deltaTime;
                     const newInPoint = trimDrag.initialInPoint + deltaTime;
 
-                    if (newInPoint >= 0 && newInPoint < track.outPoint - 0.1) {
+                    if (newInPoint >= 0 && newInPoint < (track.outPoint ?? track.duration) - 0.1) {
                         onUpdateTrack(trimDrag.trackId, { startTime: newStartTime, inPoint: newInPoint });
                     }
                 } else {
                     const newOutPoint = trimDrag.initialOutPoint + deltaTime;
-                    if (newOutPoint > track.inPoint + 0.1 && newOutPoint <= track.duration) {
+                    if (newOutPoint > (track.inPoint ?? 0) + 0.1 && newOutPoint <= track.duration) {
                         onUpdateTrack(trimDrag.trackId, { outPoint: newOutPoint });
                     }
                 }
@@ -381,13 +381,13 @@ export default function Timeline({
                                 </div>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button
-                                        className={`p-1 rounded hover:bg-white/10 ${track.muted ? 'text-red-400' : 'text-gray-500'}`}
+                                        className={`p-1 rounded hover:bg-white/10 ${track.isMuted ? 'text-red-400' : 'text-gray-500'}`}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            onUpdateTrack(track.id, { muted: !track.muted });
+                                            onUpdateTrack(track.id, { isMuted: !track.isMuted });
                                         }}
                                     >
-                                        {track.muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                                        {track.isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
                                     </button>
                                 </div>
                             </div>
@@ -451,7 +451,7 @@ export default function Timeline({
                     )}
 
                     {/* Track Lanes */}
-                    <div className="pt-2 min-w-full" style={{ width: Math.max(100, ...tracks.map(t => (t.startTime + t.duration) * zoom + 500)) }}>
+                    <div className="pt-2 min-w-full" style={{ width: Math.max(100, ...tracks.map(t => ((t.startTime || 0) + (t.duration || 0)) * zoom + 500)) }}>
                         {[...videoTracks, ...audioTracks].map((track) => {
                             const effectiveDuration = getEffectiveDuration(track);
                             return (
@@ -463,7 +463,7 @@ export default function Timeline({
                                     <div
                                         className="absolute top-2 bottom-2 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing border border-white/10 hover:border-white/20 transition-all select-none shadow-sm"
                                         style={{
-                                            left: track.startTime * zoom,
+                                            left: (track.startTime || 0) * zoom,
                                             width: Math.max(2, effectiveDuration * zoom),
                                             backgroundColor: selectedTrackId === track.id
                                                 ? (track.type === 'audio' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(99, 102, 241, 0.2)')
