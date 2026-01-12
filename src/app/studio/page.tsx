@@ -16,7 +16,7 @@ import { Track, INITIAL_TRACKS, formatTime, Effect, EffectType, ReverbEffect, De
 import ExportModal from '@/components/studio/ExportModal';
 import SettingsModal from '@/components/studio/SettingsModal';
 import { createClient } from '@/lib/supabase/client';
-import { createSession, canCreateSession, updateSessionTitle } from '@/lib/supabase/sessions';
+import { createSession, canCreateSession, updateSessionTitle, updateSessionData, getSessionById } from '@/lib/supabase/sessions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
 import KeyboardShortcutsModal, { useKeyboardShortcuts } from '@/components/studio/KeyboardShortcutsModal';
@@ -147,11 +147,37 @@ function StudioContent() {
             const existingSessionId = searchParams.get('session');
 
             if (existingSessionId) {
-                // Load existing session - don't create a new one
+                // Load existing session from Database
                 setSessionId(existingSessionId);
                 sessionInitialized.current = true;
-                console.log("Loading existing session:", existingSessionId);
-                // For now, we reuse local storage or DB loading logic if implemented
+
+                try {
+                    const sessionData = await getSessionById(existingSessionId);
+                    if (sessionData) {
+                        setSessionName(sessionData.title);
+
+                        // Restore state from metadata if available
+                        if (sessionData.metadata) {
+                            const meta = sessionData.metadata as unknown as SessionData;
+                            if (meta.mode) setMode(meta.mode);
+                            if (meta.zoom) setZoom(meta.zoom);
+                            if (meta.tracks) {
+                                // Restore tracks (note: files are lost, URL/Blob refs might need regeneration or external hosting)
+                                // For now we assume URLs are accessible or invalid (placeholder)
+                                setTracks(meta.tracks.map(t => ({
+                                    ...t,
+                                    file: undefined // Files cannot be restored from JSON
+                                } as Track)));
+                            }
+                        }
+                    } else {
+                        showToast('error', 'Session not found.');
+                        router.push('/dashboard');
+                    }
+                } catch (e) {
+                    console.error("Failed to load session:", e);
+                    showToast('error', 'Failed to load session.');
+                }
             } else {
                 // Check if user can create a new session
                 const canCreate = await canCreateSession(user.id);
@@ -847,9 +873,9 @@ function StudioContent() {
                 };
                 localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
 
-                // Also sync session title to database
-                if (sessionId && sessionName !== 'Untitled Session') {
-                    await updateSessionTitle(sessionId, sessionName);
+                // Sync full session state to database
+                if (sessionId) {
+                    await updateSessionData(sessionId, sessionName, sessionData);
                 }
 
                 setLastSaved(new Date());

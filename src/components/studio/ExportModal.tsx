@@ -143,7 +143,7 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
                 const trackEffects = (track.effects || [])
                     .filter(e => e.active)
                     .map(e => ({
-                        type: e.name.toLowerCase().replace(/\s+/g, '-') as EffectType,
+                        type: e.type,
                         active: e.active,
                         params: e.params
                     }));

@@ -69,6 +69,23 @@ export async function getUserSessions(userId: string): Promise<AudioGeneration[]
     return data || []
 }
 
+// Get single session by ID
+export async function getSessionById(sessionId: string): Promise<AudioGeneration | null> {
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+        .from('audio_generations')
+        .select('*')
+        .eq('id', sessionId)
+        .single()
+
+    if (error) {
+        console.error('Error fetching session:', error)
+        return null
+    }
+    return data
+}
+
 // Get user profile with generation info
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
     const supabase = createClient()
@@ -180,6 +197,26 @@ export async function updateSessionTitle(sessionId: string, title: string): Prom
 
     if (error) {
         console.error('Error updating session title:', error.message || JSON.stringify(error))
+        return false
+    }
+    return true
+}
+
+// Save full session state (Metadata)
+export async function updateSessionData(sessionId: string, title: string, metadata: Record<string, any>): Promise<boolean> {
+    const supabase = createClient()
+
+    const { error } = await supabase
+        .from('audio_generations')
+        .update({
+            title,
+            metadata,
+            updated_at: new Date().toISOString() // Ensure updated_at exists or is handled by trigger
+        })
+        .eq('id', sessionId)
+
+    if (error) {
+        console.error('Error updating session data:', error.message || JSON.stringify(error))
         return false
     }
     return true
