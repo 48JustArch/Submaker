@@ -22,6 +22,7 @@ interface StudioHeaderProps {
     onRedo?: () => void;
     canUndo?: boolean;
     canRedo?: boolean;
+    onShortcuts?: () => void;
 }
 
 export default function StudioHeader({
@@ -41,6 +42,7 @@ export default function StudioHeader({
     onRedo,
     canUndo = false,
     canRedo = false,
+    onShortcuts,
 }: StudioHeaderProps) {
     const [isEditingName, setIsEditingName] = useState(false);
 
@@ -288,12 +290,15 @@ export default function StudioHeader({
                 </motion.button>
 
                 {/* Keyboard Shortcuts Hint (Hidden on Mobile) */}
-                <div className="hidden md:block relative group">
+                <div
+                    className="hidden md:block relative group"
+                    onClick={() => onShortcuts?.()}
+                >
                     <div className="w-6 h-6 rounded bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-[10px] font-bold text-gray-500 hover:text-white transition-colors cursor-help">
                         ?
                     </div>
                     <div className="absolute right-0 top-full mt-2 px-3 py-2 bg-[#141414] border border-white/10 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                        <div className="text-[10px] text-gray-400">Press <span className="text-white font-mono bg-white/10 px-1 rounded">?</span> for shortcuts</div>
+                        <div className="text-[10px] text-gray-400">Click or press <span className="text-white font-mono bg-white/10 px-1 rounded">?</span> for shortcuts</div>
                     </div>
                 </div>
             </div>
