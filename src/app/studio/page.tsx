@@ -296,6 +296,13 @@ function StudioContent() {
         isPlaying
     });
 
+    // Helper to format time for display
+    const formatTime = (time: number) => {
+        const minutes = Math.floor(time / 60);
+        const seconds = Math.floor(time % 60);
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
     if (isLoading) {
         return <StudioSkeleton />;
     }
@@ -304,6 +311,12 @@ function StudioContent() {
         <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden relative">
             {/* Header */}
             <StudioHeader
+                mode={mode}
+                setMode={setMode}
+                isPlaying={isPlaying}
+                setIsPlaying={() => togglePlayPause()}
+                currentTime={formatTime(currentTime)}
+                onStop={stop}
                 sessionName={sessionName}
                 onSessionNameChange={setSessionName}
                 lastSaved={lastSaved}
