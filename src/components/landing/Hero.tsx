@@ -117,14 +117,15 @@ export default function Hero() {
             <NeuralBackground />
 
             {/* Apple-style Consciousness Orb - Clean white/silver fluid animation */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+            {/* Hidden on small mobile, scaled down on tablet */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none hidden sm:block">
                 {/* Rotating outer gradient ring */}
                 <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                    className="absolute w-[600px] h-[600px] -translate-x-1/2 -translate-y-1/2"
+                    className="absolute w-[300px] h-[300px] md:w-[600px] md:h-[600px] -translate-x-1/2 -translate-y-1/2"
                 >
-                    <div className="absolute inset-0 rounded-full bg-gradient-conic from-white/20 via-gray-400/10 via-50% to-white/20 blur-[100px] opacity-60" />
+                    <div className="absolute inset-0 rounded-full bg-gradient-conic from-white/20 via-gray-400/10 via-50% to-white/20 blur-[60px] md:blur-[100px] opacity-60" />
                 </motion.div>
 
                 {/* Primary morphing blob */}
@@ -138,7 +139,7 @@ export default function Hero() {
                         repeat: Infinity,
                         ease: "easeInOut"
                     }}
-                    className="absolute w-[400px] h-[400px] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-white/30 via-gray-300/25 to-white/30 blur-[80px]"
+                    className="absolute w-[200px] h-[200px] md:w-[400px] md:h-[400px] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-white/30 via-gray-300/25 to-white/30 blur-[40px] md:blur-[80px]"
                 />
 
                 {/* Secondary floating blob */}
@@ -154,7 +155,7 @@ export default function Hero() {
                         repeat: Infinity,
                         ease: "easeInOut"
                     }}
-                    className="absolute w-[300px] h-[300px] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-tr from-gray-200/40 via-white/35 to-gray-300/40 blur-[60px]"
+                    className="absolute w-[150px] h-[150px] md:w-[300px] md:h-[300px] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-tr from-gray-200/40 via-white/35 to-gray-300/40 blur-[30px] md:blur-[60px]"
                 />
 
                 {/* Bright pulsing core */}
@@ -168,7 +169,7 @@ export default function Hero() {
                         repeat: Infinity,
                         ease: "easeInOut"
                     }}
-                    className="absolute w-[180px] h-[180px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-white/50 via-gray-100/60 to-white/50 blur-[50px]"
+                    className="absolute w-[90px] h-[90px] md:w-[180px] md:h-[180px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-white/50 via-gray-100/60 to-white/50 blur-[25px] md:blur-[50px]"
                 />
 
                 {/* Super bright center spark */}
@@ -182,21 +183,21 @@ export default function Hero() {
                         repeat: Infinity,
                         ease: "easeInOut"
                     }}
-                    className="absolute w-[80px] h-[80px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 blur-[30px]"
+                    className="absolute w-[40px] h-[40px] md:w-[80px] md:h-[80px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 blur-[15px] md:blur-[30px]"
                 />
             </div>
 
-            <div className="relative z-10 max-w-5xl mx-auto text-center space-y-10">
+            <div className="relative z-10 max-w-5xl mx-auto text-center space-y-6 sm:space-y-10 pt-20 sm:pt-0">
 
                 {/* Minimal Badge */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md"
+                    className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md"
                 >
-                    <span className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
-                    <span className="text-sm font-medium text-white/70 tracking-widest uppercase text-[10px]">Unlock Your Mind</span>
+                    <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-white animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                    <span className="text-[9px] sm:text-[10px] font-medium text-white/70 tracking-widest uppercase">Unlock Your Mind</span>
                 </motion.div>
 
                 {/* Massive Type */}
@@ -204,7 +205,7 @@ export default function Hero() {
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.1 }}
-                    className="text-6xl md:text-8xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/50 leading-[1.1]"
+                    className="text-4xl sm:text-6xl md:text-8xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/50 leading-[1.1]"
                 >
                     Design your <br />
                     subconscious.
@@ -215,7 +216,7 @@ export default function Hero() {
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.2 }}
-                    className="max-w-xl mx-auto text-lg md:text-xl text-gray-400 font-light leading-relaxed"
+                    className="max-w-xl mx-auto text-base sm:text-lg md:text-xl text-gray-400 font-light leading-relaxed px-4 sm:px-0"
                 >
                     Create subliminal audio that bypasses the conscious mind. <br className="hidden md:block" />
                     Layer affirmations beneath music for effortless transformation.
@@ -226,20 +227,20 @@ export default function Hero() {
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.3 }}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-4"
+                    className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0"
                 >
                     <Link
                         href="/signup"
-                        className="px-8 py-4 rounded-full bg-white text-black font-semibold text-sm flex items-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-full bg-white text-black font-semibold text-sm flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all"
                     >
                         Start Creating
-                        <ArrowRight className="w-5 h-5" />
+                        <ArrowRight className="w-4 sm:w-5 h-4 sm:h-5" />
                     </Link>
                     <button
                         onClick={() => setShowHowItWorks(true)}
-                        className="px-6 py-4 rounded-full border border-white/10 bg-white/5 text-white font-medium text-sm flex items-center gap-3 hover:bg-white/10 hover:border-white/20 transition-all"
+                        className="w-full sm:w-auto px-6 py-3.5 sm:py-4 rounded-full border border-white/10 bg-white/5 text-white font-medium text-sm flex items-center justify-center gap-3 hover:bg-white/10 hover:border-white/20 transition-all"
                     >
-                        <PlayCircle className="w-5 h-5 text-white/60" />
+                        <PlayCircle className="w-4 sm:w-5 h-4 sm:h-5 text-white/60" />
                         <span>How it works</span>
                     </button>
                 </motion.div>

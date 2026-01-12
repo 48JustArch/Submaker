@@ -153,11 +153,11 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen bg-[#050505] text-white">
             {/* Top Navigation */}
-            <nav className="border-b border-white/10 px-8 py-4 flex items-center justify-between sticky top-0 bg-[#050505]/80 backdrop-blur-md z-20">
-                <div className="flex items-center gap-3 font-bold text-xl tracking-tighter">
-                    <div className="w-3 h-3 bg-white rounded-full" />
+            <nav className="border-b border-white/10 px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between sticky top-0 bg-[#050505]/80 backdrop-blur-md z-20">
+                <Link href="/" className="flex items-center gap-2 sm:gap-3 font-bold text-lg sm:text-xl tracking-tighter">
+                    <div className="w-2.5 sm:w-3 h-2.5 sm:h-3 bg-white rounded-full" />
                     Submaker
-                </div>
+                </Link>
 
                 <div className="flex items-center gap-4">
                     <div className="hidden md:flex items-center gap-2 text-sm text-gray-400">
@@ -200,32 +200,32 @@ export default function Dashboard() {
                 </div>
             </nav>
 
-            <main className="max-w-6xl mx-auto p-8 space-y-12">
+            <main className="max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-8 sm:space-y-12">
                 {/* Welcome Section */}
                 <section>
                     <motion.h1
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-4xl font-bold mb-2"
+                        className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2"
                     >
                         {getGreeting()}, {getUserName()}.
                     </motion.h1>
-                    <p className="text-gray-500">Ready to engineer your reality?</p>
+                    <p className="text-sm sm:text-base text-gray-500">Ready to engineer your reality?</p>
                 </section>
 
                 {/* New Session Card */}
                 <section>
                     {canCreateNew() ? (
-                        <Link href="/studio" className="group relative overflow-hidden rounded-3xl bg-[#0a0a0a] border border-white/10 p-8 hover:border-white/20 transition-all block" aria-label="Create new session">
-                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <Plus className="w-32 h-32 text-white" />
+                        <Link href="/studio" className="group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-[#0a0a0a] border border-white/10 p-6 sm:p-8 hover:border-white/20 transition-all block" aria-label="Create new session">
+                            <div className="absolute top-0 right-0 p-4 sm:p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <Plus className="w-20 sm:w-32 h-20 sm:h-32 text-white" />
                             </div>
                             <div className="relative z-10">
-                                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-6 text-black">
-                                    <Plus className="w-6 h-6" />
+                                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-white rounded-lg sm:rounded-xl flex items-center justify-center mb-4 sm:mb-6 text-black">
+                                    <Plus className="w-5 sm:w-6 h-5 sm:h-6" />
                                 </div>
-                                <h2 className="text-2xl font-bold mb-2">New Session</h2>
-                                <p className="text-gray-500">Start a new audio engineering project from scratch.</p>
+                                <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">New Session</h2>
+                                <p className="text-sm sm:text-base text-gray-500">Start a new audio engineering project from scratch.</p>
                             </div>
                         </Link>
                     ) : (
@@ -258,9 +258,8 @@ export default function Dashboard() {
                             sessions.map((session) => (
                                 <div
                                     key={session.id}
-                                    className="flex items-center justify-between p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors group"
-                                >
-                                    <div className="flex items-center gap-4">
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors group gap-3 sm:gap-0">
+                                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                                         <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
                                             <PlayCircle className="w-5 h-5 text-gray-400 group-hover:text-white" />
                                         </div>

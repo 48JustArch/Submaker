@@ -1173,10 +1173,43 @@ function StudioContent() {
     );
 }
 
+// Mobile detection imports
+import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery';
+import MobileWarning from '@/components/studio/MobileWarning';
+
 export default function StudioPage() {
+    const isMobile = useIsMobile();
+    const isTablet = useIsTablet();
+    const [bypassWarning, setBypassWarning] = useState(false);
+
+    // Show mobile warning on phones (not tablets)
+    if (isMobile && !bypassWarning) {
+        return (
+            <MobileWarning
+                title="Desktop Recommended"
+                message="The Studio editor works best on desktop devices with a larger screen. For the best creative experience, please switch to a desktop computer."
+                allowContinue={true}
+                onContinue={() => setBypassWarning(true)}
+            />
+        );
+    }
+
+    // Show tablet warning with option to continue
+    if (isTablet && !bypassWarning) {
+        return (
+            <MobileWarning
+                title="Tablet Support Limited"
+                message="While basic features work on tablets, the full Studio experience is optimized for desktop. Some features may be harder to use."
+                allowContinue={true}
+                onContinue={() => setBypassWarning(true)}
+            />
+        );
+    }
+
     return (
         <Suspense fallback={<StudioSkeleton />}>
             <StudioContent />
         </Suspense>
     );
 }
+

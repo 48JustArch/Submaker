@@ -19,6 +19,7 @@ export default function GlassNavbar() {
     const handleSignOut = async () => {
         await supabase.auth.signOut();
         setUser(null);
+        setMobileOpen(false);
         router.refresh();
     };
 
@@ -49,6 +50,29 @@ export default function GlassNavbar() {
 
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    // Close mobile menu on resize to desktop
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 768) {
+                setMobileOpen(false);
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Prevent body scroll when mobile menu is open
+    useEffect(() => {
+        if (mobileOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [mobileOpen]);
 
     // Icons with custom animations or glowing styles
     const products = [
@@ -107,7 +131,7 @@ export default function GlassNavbar() {
                     </span>
                 </Link>
 
-                {/* Center: Links */}
+                {/* Center: Links - Desktop */}
                 <div className="hidden md:flex items-center gap-10">
 
                     {/* Products Dropdown Trigger */}
@@ -137,7 +161,7 @@ export default function GlassNavbar() {
                     ))}
                 </div>
 
-                {/* Right: Actions */}
+                {/* Right: Actions - Desktop */}
                 <div className="hidden md:flex items-center gap-3 relative z-50">
                     {user ? (
                         <>
@@ -167,14 +191,15 @@ export default function GlassNavbar() {
 
                 {/* Mobile Toggle */}
                 <button
-                    className="md:hidden text-white z-50"
+                    className="md:hidden text-white z-50 p-2"
                     onClick={() => setMobileOpen(!mobileOpen)}
+                    aria-label={mobileOpen ? "Close menu" : "Open menu"}
                 >
-                    {mobileOpen ? <X /> : <Menu />}
+                    {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
             </div>
 
-            {/* Megamenu Dropdowns */}
+            {/* Megamenu Dropdowns - Desktop */}
             <AnimatePresence>
                 {activeDropdown === 'products' && (
                     <motion.div
@@ -182,7 +207,7 @@ export default function GlassNavbar() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full left-0 w-full bg-[#050505]/95 backdrop-blur-3xl border-b border-white/5 shadow-2xl z-40"
+                        className="absolute top-full left-0 w-full bg-[#050505]/95 backdrop-blur-3xl border-b border-white/5 shadow-2xl z-40 hidden md:block"
                         onMouseEnter={() => setActiveDropdown('products')}
                         onMouseLeave={() => setActiveDropdown(null)}
                     >
@@ -220,6 +245,111 @@ export default function GlassNavbar() {
                                 </Link>
                             ))}
                         </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Mobile Menu */}
+            <AnimatePresence>
+                {mobileOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-0 top-0 z-40 md:hidden"
+                    >
+                        {/* Backdrop */}
+                        <div
+                            className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+                            onClick={() => setMobileOpen(false)}
+                        />
+
+                        {/* Menu Content */}
+                        <motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="absolute right-0 top-0 h-full w-full max-w-sm bg-[#0a0a0a] border-l border-white/10 overflow-y-auto"
+                        >
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-6 border-b border-white/5">
+                                <span className="text-lg font-semibold text-white">Menu</span>
+                                <button
+                                    onClick={() => setMobileOpen(false)}
+                                    className="p-2 rounded-lg hover:bg-white/10 text-gray-400"
+                                    aria-label="Close menu"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Navigation Links */}
+                            <div className="p-6 space-y-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Products</p>
+                                {products.map((p) => (
+                                    <Link
+                                        key={p.name}
+                                        href={p.href}
+                                        onClick={() => setMobileOpen(false)}
+                                        className="flex items-center gap-4 p-4 rounded-xl hover:bg-white/5 transition-colors"
+                                    >
+                                        <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                                            {p.icon}
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-medium text-white">{p.name}</h4>
+                                            <p className="text-xs text-gray-500">{p.desc}</p>
+                                        </div>
+                                    </Link>
+                                ))}
+
+                                <div className="border-t border-white/5 my-6" />
+
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Navigation</p>
+                                {['Research', 'Pricing', 'Manifesto'].map((item) => (
+                                    <Link
+                                        key={item}
+                                        href={item === 'Pricing' ? '#pricing' : '#'}
+                                        onClick={() => setMobileOpen(false)}
+                                        className="block p-4 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                                    >
+                                        {item}
+                                    </Link>
+                                ))}
+                            </div>
+
+                            {/* User Actions */}
+                            <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-white/5 bg-[#0a0a0a]">
+                                {user ? (
+                                    <div className="space-y-3">
+                                        <Link
+                                            href="/dashboard"
+                                            onClick={() => setMobileOpen(false)}
+                                            className="w-full py-3 px-6 bg-white text-black font-semibold rounded-xl flex items-center justify-center gap-2"
+                                        >
+                                            Go to Dashboard
+                                        </Link>
+                                        <button
+                                            onClick={handleSignOut}
+                                            className="w-full py-3 px-6 bg-white/10 text-white font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-white/20 transition-colors"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            Sign Out
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <Link
+                                        href="/login"
+                                        onClick={() => setMobileOpen(false)}
+                                        className="w-full py-3 px-6 bg-white text-black font-semibold rounded-xl flex items-center justify-center gap-2"
+                                    >
+                                        Login
+                                    </Link>
+                                )}
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

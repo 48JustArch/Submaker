@@ -105,9 +105,9 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-            {/* Background Glow - Silver */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+            {/* Background Glow - Silver - smaller on mobile */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-white/5 blur-[80px] sm:blur-[120px] rounded-full pointer-events-none" />
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -115,15 +115,15 @@ export default function LoginPage() {
                 className="w-full max-w-md relative z-10"
             >
                 {/* Logo */}
-                <div className="flex justify-center mb-8">
-                    <Link href="/" className="flex items-center gap-2 text-2xl font-bold tracking-tighter text-white">
-                        <div className="w-4 h-4 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)]" />
+                <div className="flex justify-center mb-6 sm:mb-8">
+                    <Link href="/" className="flex items-center gap-2 text-xl sm:text-2xl font-bold tracking-tighter text-white">
+                        <div className="w-3 sm:w-4 h-3 sm:h-4 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)]" />
                         Submaker
                     </Link>
                 </div>
 
                 {/* Card */}
-                <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+                <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
                     <h1 className="text-2xl font-bold text-white mb-2 text-center">
                         {mode === 'signin' ? 'Welcome back' : 'Create an account'}
                     </h1>
