@@ -92,6 +92,33 @@ export default function PropertiesPanel({ selectedTrack, onUpdateTrack, onDelete
                                             </div>
                                         </div>
 
+                                        {/* Visual Preview (Video/Image only) */}
+                                        {(selectedTrack.type === 'video' || selectedTrack.type === 'image') && (
+                                            <div className="aspect-video bg-black rounded-lg border border-white/10 overflow-hidden relative group">
+                                                {selectedTrack.url ? (
+                                                    selectedTrack.type === 'video' ? (
+                                                        <video
+                                                            src={selectedTrack.url}
+                                                            className="w-full h-full object-contain"
+                                                            muted
+                                                            playsInline
+                                                        // We don't auto-play here to avoid noise/distraction, but could add play on hover
+                                                        />
+                                                    ) : (
+                                                        <img
+                                                            src={selectedTrack.url}
+                                                            alt={selectedTrack.name}
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    )
+                                                ) : (
+                                                    <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500">
+                                                        No Preview Available
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         {/* Time Stats */}
                                         <div className="grid grid-cols-2 gap-3 text-[10px] font-mono">
                                             <div className="bg-[#141414] p-3 rounded-lg border border-white/[0.04] hover:border-white/[0.1] transition-colors">
@@ -120,12 +147,13 @@ export default function PropertiesPanel({ selectedTrack, onUpdateTrack, onDelete
                                                 animate={{ scale: 1, color: '#3b82f6' }}
                                                 className="text-[10px] font-mono font-bold"
                                             >
-                                                {Math.round(selectedTrack.volume * 100)}%
+                                                {Math.round(selectedTrack.volume)}%
                                             </motion.div>
                                         </div>
 
                                         <div className="bg-[#141414] p-4 rounded-xl border border-white/[0.04] space-y-4">
                                             {/* Volume Slider - Vertical Feel */}
+                                            {/* Volume Slider */}
                                             <div className="space-y-3">
                                                 <div className="flex justify-between text-[10px] text-gray-500 font-medium">
                                                     <span>-inf</span>
@@ -137,14 +165,15 @@ export default function PropertiesPanel({ selectedTrack, onUpdateTrack, onDelete
                                                         <motion.div
                                                             layout
                                                             className="h-full bg-gradient-to-r from-blue-900/50 to-blue-500"
-                                                            style={{ width: `${selectedTrack.volume * 100}%` }}
+                                                            style={{ width: `${Math.min(100, (selectedTrack.volume / 150) * 100)}%` }} // Visual approximation if we go >100
                                                         />
                                                     </div>
+                                                    {/* Volume goes 0 to 150 now (100 = 0dB, 150 = +something) */}
                                                     <input
                                                         type="range"
                                                         min="0"
-                                                        max="1"
-                                                        step="0.01"
+                                                        max="150"
+                                                        step="1"
                                                         value={selectedTrack.volume}
                                                         onChange={(e) => onUpdateTrack?.(selectedTrack.id, { volume: Number(e.target.value) })}
                                                         className="w-full absolute opacity-0 cursor-pointer h-full z-10"
@@ -152,18 +181,48 @@ export default function PropertiesPanel({ selectedTrack, onUpdateTrack, onDelete
 
                                                     {/* Knob */}
                                                     <div className="pointer-events-none absolute h-5 w-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all group-hover:h-6 group-hover:w-2"
-                                                        style={{ left: `calc(${selectedTrack.volume * 100}% - 3px)` }}
+                                                        style={{ left: `calc(${Math.min(100, (selectedTrack.volume / 150) * 100)}% - 3px)` }}
                                                     />
                                                 </div>
                                             </div>
 
-                                            {/* Pan Control (Mock) */}
+                                            {/* Pan Control */}
                                             <div className="flex items-center justify-between pt-2">
-                                                <span className="text-[10px] text-gray-500 font-medium">PAN L/R</span>
-                                                <div className="w-32 h-1 bg-white/10 rounded-full relative">
-                                                    <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-2 h-2 bg-gray-400 rounded-full hover:bg-white hover:scale-125 transition-all cursor-pointer" />
+                                                <span className="text-[10px] text-gray-500 font-medium w-12">PAN L/R</span>
+                                                <div className="flex-1 mx-4 relative h-6 flex items-center group/pan">
+                                                    <div className="absolute inset-0 bg-white/5 rounded-full overflow-hidden">
+                                                        {/* Center ticking */}
+                                                        <div className="absolute left-1/2 -translate-x-1/2 top-1 bottom-1 w-px bg-white/20" />
+
+                                                        {/* Visual Fill from Center */}
+                                                        <div
+                                                            className="absolute top-0 bottom-0 bg-blue-500/30"
+                                                            style={{
+                                                                left: (selectedTrack.pan || 0) < 0 ? `${50 + (selectedTrack.pan || 0) * 50}%` : '50%',
+                                                                width: `${Math.abs(selectedTrack.pan || 0) * 50}%`
+                                                            }}
+                                                        />
+                                                    </div>
+
+                                                    <input
+                                                        type="range"
+                                                        min="-1"
+                                                        max="1"
+                                                        step="0.05"
+                                                        value={selectedTrack.pan || 0}
+                                                        onChange={(e) => onUpdateTrack?.(selectedTrack.id, { pan: parseFloat(e.target.value) })}
+                                                        className="w-full absolute opacity-0 cursor-pointer h-full z-10"
+                                                    />
+
+                                                    {/* Knob */}
+                                                    <div
+                                                        className="pointer-events-none absolute h-3 w-3 bg-gray-400 rounded-full shadow-sm group-hover/pan:bg-white group-hover/pan:scale-125 transition-all"
+                                                        style={{ left: `calc(${50 + (selectedTrack.pan || 0) * 50}% - 6px)` }}
+                                                    />
                                                 </div>
-                                                <span className="text-[10px] text-gray-500 font-medium font-mono">C</span>
+                                                <span className="text-[10px] text-gray-500 font-medium font-mono w-6 text-right">
+                                                    {(selectedTrack.pan || 0) === 0 ? 'C' : (selectedTrack.pan || 0) < 0 ? `${Math.round(Math.abs(selectedTrack.pan || 0) * 100)}L` : `${Math.round((selectedTrack.pan || 0) * 100)}R`}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -182,19 +241,24 @@ export default function PropertiesPanel({ selectedTrack, onUpdateTrack, onDelete
                                                     + Add Effect
                                                 </button>
 
-                                                <div className="absolute right-0 top-full mt-2 w-40 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden hidden group-hover/add:block z-30 ring-1 ring-black">
+                                                <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden hidden group-hover/add:block z-30 ring-1 ring-black">
                                                     <div className="py-1">
-                                                        {['Reverb', 'Delay', 'Echo', 'Chorus', 'Subliminal Mask'].map((effectName) => (
+                                                        {(Object.keys(DEFAULT_EFFECTS) as EffectType[]).map((type) => (
                                                             <button
-                                                                key={effectName}
+                                                                key={type}
                                                                 onClick={() => {
-                                                                    const newEffect = { id: Date.now().toString(), name: effectName, active: true };
+                                                                    const defaultEffect = DEFAULT_EFFECTS[type];
+                                                                    const newEffect: Effect = {
+                                                                        ...defaultEffect,
+                                                                        id: Date.now().toString(),
+                                                                        active: true
+                                                                    } as Effect;
                                                                     const updatedEffects = [...(selectedTrack.effects || []), newEffect];
                                                                     onUpdateTrack?.(selectedTrack.id, { effects: updatedEffects });
                                                                 }}
-                                                                className="w-full text-left px-4 py-2 text-[11px] text-gray-400 hover:bg-blue-500 hover:text-white transition-colors flex items-center justify-between group/item"
+                                                                className="w-full text-left px-4 py-3 text-[11px] text-gray-400 hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-between group/item border-b border-white/[0.04] last:border-0"
                                                             >
-                                                                {effectName}
+                                                                <span className="capitalize font-medium">{type}</span>
                                                                 <span className="opacity-0 group-hover/item:opacity-100">+</span>
                                                             </button>
                                                         ))}
@@ -214,15 +278,15 @@ export default function PropertiesPanel({ selectedTrack, onUpdateTrack, onDelete
                                                             exit={{ opacity: 0, height: 0 }}
                                                         >
                                                             <EffectItem
-                                                                name={effect.name}
-                                                                active={effect.active}
-                                                                onToggle={() => {
+                                                                effect={effect}
+                                                                index={index}
+                                                                onUpdate={(updates) => {
                                                                     const updatedEffects = [...(selectedTrack.effects || [])];
-                                                                    updatedEffects[index] = { ...effect, active: !effect.active };
+                                                                    updatedEffects[index] = { ...updatedEffects[index], ...updates } as any;
                                                                     onUpdateTrack?.(selectedTrack.id, { effects: updatedEffects });
                                                                 }}
                                                                 onDelete={() => {
-                                                                    const updatedEffects = selectedTrack.effects?.filter(e => e.id !== effect.id);
+                                                                    const updatedEffects = (selectedTrack.effects || []).filter((_, i) => i !== index);
                                                                     onUpdateTrack?.(selectedTrack.id, { effects: updatedEffects });
                                                                 }}
                                                             />
@@ -313,36 +377,126 @@ export default function PropertiesPanel({ selectedTrack, onUpdateTrack, onDelete
     );
 }
 
-function EffectItem({ name, active, onToggle, onDelete }: { name: string, active: boolean, onToggle: () => void, onDelete: () => void }) {
+import { DEFAULT_EFFECTS, Effect, EffectType } from '@/components/studio/types';
+
+// ... (existing imports, keep them)
+
+// Helper for sliders
+const EffectSlider = ({ label, value, min, max, step, onChange, unit = '' }: { label: string, value: number, min: number, max: number, step: number, onChange: (val: number) => void, unit?: string }) => (
+    <div className="space-y-1">
+        <div className="flex justify-between text-[9px] text-gray-500">
+            <span>{label}</span>
+            <span className="font-mono text-gray-400">{value}{unit}</span>
+        </div>
+        <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => onChange(parseFloat(e.target.value))}
+            className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:bg-blue-400"
+        />
+    </div>
+);
+
+function EffectItem({ effect, index, onUpdate, onDelete }: { effect: Effect, index: number, onUpdate: (updates: Partial<Effect>) => void, onDelete: () => void }) {
+    const [isExpanded, setIsExpanded] = useState(true);
+
+    const updateParam = (key: string, value: number) => {
+        onUpdate({
+            params: {
+                ...effect.params,
+                [key]: value
+            } as any
+        });
+    };
+
     return (
-        <div className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 group ${active
+        <div className={`rounded-lg border transition-all duration-300 group ${effect.active
             ? 'bg-[#141414] border-blue-500/30'
             : 'bg-[#0a0a0a] border-white/[0.04] opacity-70 grayscale'
             }`}>
-            <div className="flex items-center gap-3 cursor-pointer select-none flex-1" onClick={onToggle}>
-                {/* Custom Toggle Switch */}
-                <div className={`w-8 h-4 rounded-full relative transition-colors duration-300 ${active ? 'bg-blue-500' : 'bg-gray-700'}`}>
-                    <motion.div
-                        className="absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm"
-                        animate={{ left: active ? 'calc(100% - 14px)' : '2px' }}
-                    />
+
+            {/* Header */}
+            <div className="flex items-center justify-between p-3 cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
+                <div className="flex items-center gap-3 flex-1">
+                    {/* Toggle Switch */}
+                    <div
+                        className={`w-8 h-4 rounded-full relative transition-colors duration-300 ${effect.active ? 'bg-blue-500' : 'bg-gray-700'}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdate({ active: !effect.active });
+                        }}
+                    >
+                        <motion.div
+                            className="absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm"
+                            animate={{ left: effect.active ? 'calc(100% - 14px)' : '2px' }}
+                        />
+                    </div>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${effect.active ? 'text-white' : 'text-gray-500'}`}>
+                        {effect.type}
+                    </span>
                 </div>
-                <span className={`text-xs font-medium ${active ? 'text-white' : 'text-gray-500'}`}>{name}</span>
+
+                <div className="flex gap-1">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-500 transition-colors"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    {/* Expand/Collapse Chevron could go here */}
+                </div>
             </div>
 
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0 duration-200">
-                <button
-                    className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
-                >
-                    <Settings2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-500 transition-colors"
-                >
-                    <Trash2 className="w-3.5 h-3.5" />
-                </button>
-            </div>
+            {/* Controls body */}
+            <AnimatePresence>
+                {isExpanded && effect.active && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="p-3 pt-0 space-y-3 border-t border-white/5 mt-1">
+                            {effect.type === 'reverb' && (
+                                <>
+                                    <EffectSlider label="Decay" value={effect.params.decay} min={0.1} max={10} step={0.1} onChange={(v) => updateParam('decay', v)} unit="s" />
+                                    <EffectSlider label="Mix" value={Math.round(effect.params.mix * 100)} min={0} max={100} step={1} onChange={(v) => updateParam('mix', v / 100)} unit="%" />
+                                    <EffectSlider label="Pre-Delay" value={Math.round(effect.params.preDelay * 1000)} min={0} max={100} step={1} onChange={(v) => updateParam('preDelay', v / 1000)} unit="ms" />
+                                </>
+                            )}
+
+                            {effect.type === 'delay' && (
+                                <>
+                                    <EffectSlider label="Time" value={Math.round(effect.params.time * 1000)} min={0} max={1000} step={10} onChange={(v) => updateParam('time', v / 1000)} unit="ms" />
+                                    <EffectSlider label="Feedback" value={Math.round(effect.params.feedback * 100)} min={0} max={95} step={1} onChange={(v) => updateParam('feedback', v / 100)} unit="%" />
+                                    <EffectSlider label="Mix" value={Math.round(effect.params.mix * 100)} min={0} max={100} step={1} onChange={(v) => updateParam('mix', v / 100)} unit="%" />
+                                </>
+                            )}
+
+                            {effect.type === 'chorus' && (
+                                <>
+                                    <EffectSlider label="Rate" value={effect.params.rate} min={0.1} max={10} step={0.1} onChange={(v) => updateParam('rate', v)} unit="Hz" />
+                                    <EffectSlider label="Depth" value={Math.round(effect.params.depth * 1000)} min={0} max={10} step={0.1} onChange={(v) => updateParam('depth', v / 1000)} />
+                                    <EffectSlider label="Mix" value={Math.round(effect.params.mix * 100)} min={0} max={100} step={1} onChange={(v) => updateParam('mix', v / 100)} unit="%" />
+                                </>
+                            )}
+
+                            {effect.type === 'subliminal' && (
+                                <>
+                                    <div className="bg-blue-500/10 p-2 rounded text-[10px] text-blue-200 border border-blue-500/20 mb-2 leading-relaxed">
+                                        Transforms audio into silent subliminals using <span className="font-bold text-white">Amplitude Modulation</span> at high frequencies.
+                                    </div>
+                                    <EffectSlider label="Frequency" value={effect.params.frequency} min={10000} max={20000} step={100} onChange={(v) => updateParam('frequency', v)} unit="Hz" />
+                                    <EffectSlider label="Volume" value={Math.round(effect.params.volume * 100)} min={0} max={200} step={5} onChange={(v) => updateParam('volume', v / 100)} unit="%" />
+                                </>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
-    )
+    );
 }

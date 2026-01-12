@@ -112,8 +112,8 @@ export default function AffirmationGenerator({ onClose, onAddTrack }: Affirmatio
                     {/* Header */}
                     <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#0f0f0f]">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-                                <Sparkles className="w-4 h-4 text-blue-400" strokeWidth={2} />
+                            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center border border-white/20 shadow-[0_0_10px_rgba(255,255,255,0.1)]">
+                                <Sparkles className="w-4 h-4 text-white" strokeWidth={2} />
                             </div>
                             <div>
                                 <h2 className="text-sm font-bold text-white uppercase tracking-wider">Magic Writer</h2>
@@ -140,8 +140,8 @@ export default function AffirmationGenerator({ onClose, onAddTrack }: Affirmatio
                                     className="space-y-8"
                                 >
                                     <div className="text-center space-y-3 py-4">
-                                        <div className="w-16 h-16 bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 rounded-full flex items-center justify-center mx-auto border border-white/5 shadow-inner">
-                                            <Wand2 className="w-8 h-8 text-blue-300" />
+                                        <div className="w-16 h-16 bg-gradient-to-tr from-white/10 to-gray-500/10 rounded-full flex items-center justify-center mx-auto border border-white/10 shadow-inner">
+                                            <Wand2 className="w-8 h-8 text-white" />
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-medium text-white">What do you want to manifest?</h3>
@@ -156,14 +156,14 @@ export default function AffirmationGenerator({ onClose, onAddTrack }: Affirmatio
                                                 value={topic}
                                                 onChange={(e) => setTopic(e.target.value)}
                                                 placeholder="e.g. Unshakable Confidence, Wealth..."
-                                                className="w-full bg-[#141414] border border-white/10 rounded-xl px-4 py-4 pr-12 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all shadow-sm focus:shadow-lg focus:shadow-blue-500/10"
+                                                className="w-full bg-[#141414] border border-white/10 rounded-xl px-4 py-4 pr-12 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white transition-all shadow-sm focus:shadow-lg focus:shadow-white/10"
                                                 onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
                                                 autoFocus
                                             />
                                             <button
                                                 onClick={handleGenerate}
                                                 disabled={!topic.trim() || isGenerating}
-                                                className={`absolute right-2 top-2 bottom-2 aspect-square rounded-lg flex items-center justify-center transition-all ${topic.trim() ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:scale-105 active:scale-95' : 'bg-transparent text-gray-600'
+                                                className={`absolute right-2 top-2 bottom-2 aspect-square rounded-lg flex items-center justify-center transition-all ${topic.trim() ? 'bg-white text-black shadow-lg shadow-white/20 hover:scale-105 active:scale-95' : 'bg-transparent text-gray-600'
                                                     }`}
                                             >
                                                 {isGenerating ? <RotateCcw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
@@ -197,7 +197,7 @@ export default function AffirmationGenerator({ onClose, onAddTrack }: Affirmatio
                                         </span>
                                         <button
                                             onClick={handleGenerate}
-                                            className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1.5 transition-colors font-medium px-2 py-1 rounded hover:bg-blue-500/10"
+                                            className="text-[11px] text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors font-medium px-2 py-1 rounded hover:bg-white/10"
                                         >
                                             <RotateCcw className="w-3 h-3" /> Regenerate
                                         </button>
@@ -209,12 +209,12 @@ export default function AffirmationGenerator({ onClose, onAddTrack }: Affirmatio
                                             <button
                                                 key={idx}
                                                 onClick={() => toggleSelection(idx)}
-                                                className={`w-full text-left flex items-start gap-4 p-4 hover:bg-white/[0.02] transition-colors border-b border-white/[0.04] last:border-0 group select-none ${selectedAffirmations.has(idx) ? 'bg-blue-500/[0.03]' : ''
+                                                className={`w-full text-left flex items-start gap-4 p-4 hover:bg-white/[0.02] transition-colors border-b border-white/[0.04] last:border-0 group select-none ${selectedAffirmations.has(idx) ? 'bg-white/[0.05]' : ''
                                                     }`}
                                             >
                                                 <div className={`mt-0.5 shrink-0 transition-transform duration-200 ${selectedAffirmations.has(idx) ? 'scale-110' : 'scale-100'}`}>
                                                     {selectedAffirmations.has(idx) ? (
-                                                        <CheckCircle2 className="w-5 h-5 text-blue-500 fill-blue-500/20" />
+                                                        <CheckCircle2 className="w-5 h-5 text-white fill-white/20" />
                                                     ) : (
                                                         <Circle className="w-5 h-5 text-gray-600 group-hover:text-gray-400" strokeWidth={1.5} />
                                                     )}
@@ -262,7 +262,7 @@ export default function AffirmationGenerator({ onClose, onAddTrack }: Affirmatio
                                             <button
                                                 onClick={handleConvertToAudio}
                                                 disabled={selectedAffirmations.size === 0 || isProcessing}
-                                                className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-[#1a1a1a] disabled:text-gray-600 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
+                                                className="flex-1 rounded-xl bg-white hover:bg-gray-200 disabled:bg-[#1a1a1a] disabled:text-gray-600 text-black font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-white/10"
                                             >
                                                 {isProcessing ? <RotateCcw className="w-4 h-4 animate-spin" /> : <AudioLines className="w-4 h-4" />}
                                                 <span>Generate Audio Layer</span>

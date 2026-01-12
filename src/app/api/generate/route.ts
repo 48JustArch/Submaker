@@ -1,105 +1,91 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { exec } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { promisify } from 'util';
+import os from 'os';
 
-// POST /api/generate - Generate scalar audio
-export async function POST(request: NextRequest) {
+const execAsync = promisify(exec);
+
+// Valid generator types
+const VALID_TYPES = [
+    'spectral', 'silent',
+    'binaural', 'isochronic',
+    'pink_noise', 'brown_noise', 'white_noise',
+    'solfeggio'
+];
+
+export async function POST(req: NextRequest) {
     try {
-        const body = await request.json();
-        const { intention, audioType, duration } = body;
+        const body = await req.json();
+        const { type, text, duration, preset, frequency } = body;
 
-        // TODO: Add authentication check
-        // const session = await getServerSession();
-        // if (!session) {
-        //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        // }
-
-        // TODO: Check user's generation limit
-        // const usage = await getUserUsage(session.user.id);
-        // if (usage.generations_used >= usage.generations_limit) {
-        //   return NextResponse.json({ error: 'Generation limit reached' }, { status: 403 });
-        // }
-
-        // Validate input
-        if (!intention || !audioType) {
+        // Validate type
+        if (!type || !VALID_TYPES.includes(type)) {
             return NextResponse.json(
-                { error: 'Missing required fields: intention, audioType' },
+                { error: 'Invalid type', valid_types: VALID_TYPES },
                 { status: 400 }
             );
         }
 
-        const validTypes = ['subliminal', 'morphic', 'supraliminal'];
-        if (!validTypes.includes(audioType)) {
-            return NextResponse.json(
-                { error: 'Invalid audioType. Must be: subliminal, morphic, or supraliminal' },
-                { status: 400 }
-            );
+        // Text is required only for spectral and silent
+        if ((type === 'spectral' || type === 'silent') && !text) {
+            return NextResponse.json({ error: 'Text is required for spectral/silent' }, { status: 400 });
         }
 
-        // TODO: Call Python FastAPI microservice for audio generation
-        // const response = await fetch(process.env.PYTHON_API_URL + '/generate', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({
-        //     intention,
-        //     audio_type: audioType,
-        //     duration: duration || 300, // Default 5 minutes
-        //   }),
-        // });
-        // const audioData = await response.json();
+        // Setup paths
+        const projectRoot = process.cwd();
+        const scriptPath = path.join(projectRoot, 'src', 'engine', 'main.py');
+        const tempDir = os.tmpdir();
+        const fileName = `gen_${Date.now()}_${Math.random().toString(36).substring(7)}.wav`;
+        const outputPath = path.join(tempDir, fileName);
 
-        // Placeholder response
-        const mockResponse = {
-            id: `gen_${Date.now()}`,
-            status: 'processing',
-            message: 'Audio generation started. This is a placeholder response.',
-            estimatedTime: '30 seconds',
-            intention,
-            audioType,
-            duration: duration || 300,
-        };
+        // Build command arguments
+        let cmdArgs = `"${scriptPath}" ${type} --out "${outputPath}" --duration ${duration || 60}`;
 
-        // TODO: Increment user's usage after successful generation
-        // await incrementUsage(session.user.id);
-
-        return NextResponse.json(mockResponse, { status: 202 });
-    } catch (error) {
-        console.error('Generation error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
-    }
-}
-
-// GET /api/generate - Get generation status/history
-export async function GET(request: NextRequest) {
-    try {
-        // TODO: Add authentication check
-
-        const { searchParams } = new URL(request.url);
-        const generationId = searchParams.get('id');
-
-        if (generationId) {
-            // Return specific generation status
-            // TODO: Fetch from database
-            return NextResponse.json({
-                id: generationId,
-                status: 'completed',
-                audioUrl: '/placeholder-audio.mp3',
-                message: 'This is a placeholder response.',
-            });
+        // Add type-specific arguments
+        if (text) {
+            cmdArgs += ` --text "${text.replace(/"/g, '\\"')}"`;
+        }
+        if (preset) {
+            cmdArgs += ` --preset "${preset}"`;
+        }
+        if (frequency) {
+            cmdArgs += ` --frequency "${frequency}"`;
         }
 
-        // Return user's generation history
-        // TODO: Fetch from database
-        return NextResponse.json({
-            generations: [],
-            total: 0,
-            message: 'This is a placeholder response. Connect Supabase to see real data.',
+        const cmd = `python ${cmdArgs}`;
+        console.log("Executing:", cmd);
+
+        const { stdout, stderr } = await execAsync(cmd, { timeout: 120000 }); // 2 min timeout
+
+        if (stderr) {
+            console.error("Python Stderr:", stderr);
+        }
+        console.log("Python Stdout:", stdout);
+
+        // Read the generated file
+        if (!fs.existsSync(outputPath)) {
+            throw new Error("Output file was not created");
+        }
+
+        const audioBuffer = fs.readFileSync(outputPath);
+
+        // Cleanup
+        fs.unlinkSync(outputPath);
+
+        // Return audio
+        return new NextResponse(audioBuffer, {
+            headers: {
+                'Content-Type': 'audio/wav',
+                'Content-Disposition': `attachment; filename="${type}_generated.wav"`,
+            },
         });
-    } catch (error) {
-        console.error('Fetch error:', error);
+
+    } catch (error: any) {
+        console.error('Generation Error:', error);
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: 'Failed to generate audio', details: error.message },
             { status: 500 }
         );
     }

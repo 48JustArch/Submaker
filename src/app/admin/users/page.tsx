@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { toggleUserBan } from '@/lib/supabase/sessions';
+import { toggleUserBan, resetGenerationCount } from '@/lib/supabase/sessions';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowLeft, Search, Shield, ShieldAlert, User, MoreVertical, Ban, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Search, Shield, ShieldAlert, User, MoreVertical, Ban, CheckCircle, RotateCcw } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface UserProfile {
     id: string;
@@ -24,6 +26,8 @@ export default function UserManagementPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const supabase = createClient();
+    const { showToast } = useToast();
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchUsers();
@@ -54,8 +58,32 @@ export default function UserManagementPage() {
             setUsers(prev => prev.map(u =>
                 u.id === userId ? { ...u, is_banned: !currentStatus } : u
             ));
+            showToast('success', currentStatus ? 'User unbanned successfully' : 'User banned successfully');
         } else {
-            alert('Failed to update ban status. Ensure you are an admin.');
+            showToast('error', 'Failed to update ban status. Ensure you are an admin.');
+        }
+    };
+
+    const handleResetGenerations = async (userId: string) => {
+        const confirmed = await confirm({
+            title: 'Reset Generation Count',
+            message: 'Reset this user\'s generation count to 0?',
+            confirmText: 'Reset',
+            cancelText: 'Cancel',
+            variant: 'warning'
+        });
+
+        if (!confirmed) return;
+
+        const success = await resetGenerationCount(userId);
+        if (success) {
+            // Update local state
+            setUsers(prev => prev.map(u =>
+                u.id === userId ? { ...u, generations_used: 0 } : u
+            ));
+            showToast('success', 'Generation count reset to 0');
+        } else {
+            showToast('error', 'Failed to reset generations. Ensure you are an admin.');
         }
     };
 
@@ -164,15 +192,26 @@ export default function UserManagementPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <button
-                                                    onClick={() => handleBanToggle(user.id, user.is_banned)}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${user.is_banned
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleResetGenerations(user.id)}
+                                                        disabled={user.generations_used === 0}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                        title="Reset generation count to 0"
+                                                    >
+                                                        <RotateCcw className="w-3 h-3" />
+                                                        Reset Gens
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleBanToggle(user.id, user.is_banned)}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${user.is_banned
                                                             ? 'bg-white/10 text-white hover:bg-white/20'
                                                             : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
-                                                        }`}
-                                                >
-                                                    {user.is_banned ? 'Unban User' : 'Ban Access'}
-                                                </button>
+                                                            }`}
+                                                    >
+                                                        {user.is_banned ? 'Unban User' : 'Ban Access'}
+                                                    </button>
+                                                </div>
                                             </td>
                                         </motion.tr>
                                     ))

@@ -46,10 +46,11 @@ interface ExportModalProps {
     tracks: Track[];
     sessionId?: string;
     userId?: string;
+    sessionName?: string;
     onExportComplete?: () => void;
 }
 
-export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId, onExportComplete }: ExportModalProps) {
+export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId, sessionName, onExportComplete }: ExportModalProps) {
     const router = useRouter();
     const [isExporting, setIsExporting] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -87,7 +88,8 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
                 // Non-blocking DB update
                 try {
                     const audioType = format === 'wav' ? 'wav' : 'mp4';
-                    await closeSession(sessionId, url, audioType);
+                    // Pass session name to ensure it's saved with the completed status
+                    await closeSession(sessionId, url, audioType, sessionName || 'Untitled Session');
                     await incrementGenerationCount(userId);
                 } catch (e) {
                     console.error("Failed to save session state:", e);

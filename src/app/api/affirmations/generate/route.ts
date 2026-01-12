@@ -1,11 +1,33 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+
+// Helper to check authentication
+async function getAuthenticatedUser() {
+    try {
+        const supabase = await createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) return null;
+        return user;
+    } catch {
+        return null;
+    }
+}
 
 export async function POST(req: Request) {
+    // Authentication check
+    const user = await getAuthenticatedUser();
+    if (!user) {
+        return NextResponse.json(
+            { error: 'Unauthorized. Please log in to generate affirmations.' },
+            { status: 401 }
+        );
+    }
+
     // Read directly from process.env inside the handler to ensure latest value
     const apiKey = process.env.GEMINI_API_KEY;
 
-    console.log('Gemini Check - Key exists:', !!apiKey);
+    console.log(`[Affirmations] User ${user.id} - Gemini Key exists: ${!!apiKey}`);
 
     if (!apiKey) {
         console.warn('Missing GEMINI_API_KEY, falling back to mock data.');
@@ -17,7 +39,8 @@ export async function POST(req: Request) {
                 `I radiate positive energy and attract success in ${topic || 'abundance'}.`,
                 `My mind is attuned to the frequency of ${topic || 'greatness'}.`,
                 `I effortlessly achieve my goals regarding ${topic || 'my dreams'}.`
-            ]
+            ],
+            _note: 'Using mock data - GEMINI_API_KEY not configured'
         });
     }
 

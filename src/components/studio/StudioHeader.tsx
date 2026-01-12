@@ -64,7 +64,7 @@ export default function StudioHeader({
             {/* ===== LEFT SECTION ===== */}
             <div className="flex items-center gap-4 w-[280px]">
                 {/* Back Button */}
-                <Link href="/dashboard">
+                <Link href="/dashboard" aria-label="Back to dashboard">
                     <motion.div
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -82,6 +82,7 @@ export default function StudioHeader({
                         onChange={(e) => onSessionNameChange(e.target.value)}
                         onFocus={() => setIsEditingName(true)}
                         onBlur={() => setIsEditingName(false)}
+                        aria-label="Session name"
                         className={`bg-transparent text-sm font-medium w-full truncate focus:outline-none transition-all px-2 py-1 -mx-2 rounded-lg ${isEditingName
                             ? 'text-white ring-1 ring-blue-500/50 bg-white/[0.03]'
                             : 'text-gray-200 hover:text-white hover:bg-white/[0.03]'
@@ -169,6 +170,7 @@ export default function StudioHeader({
                         onClick={onStop}
                         className="w-9 h-9 rounded-md flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
                         title="Stop"
+                        aria-label="Stop playback"
                     >
                         <Square className="w-4 h-4 fill-current" />
                     </motion.button>
@@ -178,6 +180,8 @@ export default function StudioHeader({
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setIsPlaying(!isPlaying)}
+                        aria-label={isPlaying ? 'Pause playback' : 'Start playback'}
+                        aria-pressed={isPlaying}
                         className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all ${isPlaying
                             ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]'
                             : 'bg-blue-600 text-white shadow-[0_0_25px_rgba(37,99,235,0.4)] hover:bg-blue-500'
@@ -215,7 +219,11 @@ export default function StudioHeader({
                     </motion.button>
 
                     {/* Time Display */}
-                    <div className="font-mono text-sm text-white tabular-nums tracking-wider bg-black/40 px-4 py-2 rounded-lg border border-white/[0.06] min-w-[90px] text-center">
+                    <div
+                        className="font-mono text-sm text-white tabular-nums tracking-wider bg-black/40 px-4 py-2 rounded-lg border border-white/[0.06] min-w-[90px] text-center"
+                        aria-label="Current playback time"
+                        role="timer"
+                    >
                         {currentTime}
                     </div>
                 </div>
@@ -261,6 +269,7 @@ export default function StudioHeader({
                     whileHover={{ scale: 1.02, y: -1 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={onExport}
+                    aria-label="Export project (Ctrl+E)"
                     className="px-4 py-2 bg-white/[0.06] hover:bg-white/[0.1] text-white rounded-lg text-xs font-semibold flex items-center gap-2 border border-white/[0.06] transition-all"
                 >
                     <Download className="w-3.5 h-3.5" />
@@ -272,10 +281,21 @@ export default function StudioHeader({
                     whileHover={{ scale: 1.05, rotate: 15 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={onSettings}
+                    aria-label="Open settings"
                     className="w-9 h-9 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.1] transition-all"
                 >
                     <Settings className="w-4 h-4" />
                 </motion.button>
+
+                {/* Keyboard Shortcuts Hint */}
+                <div className="relative group">
+                    <div className="w-6 h-6 rounded bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-[10px] font-bold text-gray-500 hover:text-white transition-colors cursor-help">
+                        ?
+                    </div>
+                    <div className="absolute right-0 top-full mt-2 px-3 py-2 bg-[#141414] border border-white/10 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                        <div className="text-[10px] text-gray-400">Press <span className="text-white font-mono bg-white/10 px-1 rounded">?</span> for shortcuts</div>
+                    </div>
+                </div>
             </div>
         </motion.header>
     );

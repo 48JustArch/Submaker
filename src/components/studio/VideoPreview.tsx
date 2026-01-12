@@ -220,12 +220,18 @@ export default function VideoPreview({ timestamp, track, onUpdate, isPlaying, cu
                             muted
                             loop
                             playsInline
+                            autoPlay={isPlaying}
+                            onError={(e) => console.error('Video load error:', e)}
                         />
                     ) : (
                         <img
                             src={track.url}
-                            alt="Preview"
+                            alt={track.name || 'Preview'}
                             className="w-full h-full object-contain pointer-events-none"
+                            onError={(e) => {
+                                console.error('Image load error:', track.url);
+                                (e.target as HTMLImageElement).style.display = 'none';
+                            }}
                         />
                     )}
 

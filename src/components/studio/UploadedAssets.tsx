@@ -134,16 +134,35 @@ export default function UploadedAssets({ assets, onDragStart, onDelete, onAddToT
                                 <div
                                     draggable
                                     onDragStart={(e: React.DragEvent) => {
-                                        e.dataTransfer.setData('application/json', JSON.stringify(asset));
+                                        // Create a custom drag image
+                                        const dragEl = e.currentTarget.parentElement;
+                                        if (dragEl) {
+                                            e.dataTransfer.setDragImage(dragEl, 50, 50);
+                                        }
+
+                                        // Only pass the asset ID - File objects can't be serialized to JSON
+                                        e.dataTransfer.setData('application/json', JSON.stringify({
+                                            id: asset.id,
+                                            name: asset.name,
+                                            type: asset.type,
+                                            url: asset.url,
+                                            duration: asset.duration,
+                                            size: asset.size,
+                                            thumbnail: asset.thumbnail
+                                            // Note: 'file' is intentionally excluded as it can't be serialized
+                                        }));
                                         e.dataTransfer.effectAllowed = 'copy';
                                         onDragStart(asset);
+                                    }}
+                                    onDragEnd={() => {
+                                        // Reset any drag state if needed
                                     }}
                                     onDoubleClick={(e) => {
                                         e.stopPropagation();
                                         onAddToTimeline(asset);
                                     }}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="absolute inset-0 z-10"
+                                    className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing"
                                 />
 
                                 {/* Drag Handle - Always visible on hover */}
@@ -183,8 +202,8 @@ export default function UploadedAssets({ assets, onDragStart, onDelete, onAddToT
 
                                         {/* Type Indicator Line */}
                                         <div className={`absolute bottom-0 left-0 right-0 h-0.5 opacity-50 ${asset.type === 'audio' ? 'bg-blue-500' :
-                                                asset.type === 'video' ? 'bg-purple-500' :
-                                                    'bg-green-500'
+                                            asset.type === 'video' ? 'bg-purple-500' :
+                                                'bg-green-500'
                                             }`} />
                                     </div>
                                 </div>

@@ -6,6 +6,7 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/Toast';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -15,6 +16,7 @@ export default function LoginPage() {
     const [mode, setMode] = useState<'signin' | 'signup'>('signin');
     const router = useRouter();
     const supabase = createClient();
+    const { showToast } = useToast();
 
     const handleGoogleLogin = async () => {
         setLoading(true);
@@ -41,7 +43,7 @@ export default function LoginPage() {
 
         try {
             if (mode === 'signup') {
-                const { error } = await supabase.auth.signUp({
+                const { data, error } = await supabase.auth.signUp({
                     email,
                     password,
                     options: {
@@ -49,8 +51,15 @@ export default function LoginPage() {
                     }
                 });
                 if (error) throw error;
-                // Check if session usually created immediately or requires confirmation
-                alert('Account created! Please check your email to verify.');
+
+                if (data.session) {
+                    showToast('success', 'Account created! Redirecting...');
+                    router.push('/dashboard');
+                    router.refresh();
+                } else {
+                    // Session null usually means email confirmation is required
+                    showToast('success', 'Account created! Please check your email to verify.');
+                }
             } else {
                 const { error } = await supabase.auth.signInWithPassword({
                     email,

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { isAdminEmail } from '@/lib/config'
 
 export interface AudioGeneration {
     id: string
@@ -85,24 +86,40 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     return data
 }
 
-// Check if user can create more generations (Draft Limit: 3)
-export async function canCreateSession(userId: string): Promise<boolean> {
+// Check if user can create more sessions
+// Rules:
+// 1. Max 3 active drafts at a time
+// 2. Free plan: Cannot exceed generations_limit for completed exports
+export async function canCreateSession(userId: string): Promise<{ allowed: boolean; reason?: string }> {
     const supabase = createClient()
 
     // Check active drafts count
-    const { count, error } = await supabase
+    const { count: draftCount, error: draftError } = await supabase
         .from('audio_generations')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('status', 'draft')
+        .eq('is_closed', false)
 
-    if (error) {
-        console.error('Error checking draft count:', error)
-        return false
+    if (draftError) {
+        console.error('Error checking draft count:', draftError)
+        return { allowed: false, reason: 'Error checking draft count' }
     }
 
-    // Limit to 3 drafts
-    return (count || 0) < 3
+    // Limit to 3 active drafts
+    if ((draftCount || 0) >= 3) {
+        return { allowed: false, reason: 'You have 3 open drafts. Finish or delete one to create new.' }
+    }
+
+    // Check generations limit for free plan
+    const profile = await getUserProfile(userId)
+    if (profile && profile.plan === 'free') {
+        if (profile.generations_used >= profile.generations_limit) {
+            return { allowed: false, reason: `You've reached your free plan limit (${profile.generations_limit} exports). Upgrade to continue.` }
+        }
+    }
+
+    return { allowed: true }
 }
 
 // Ensure user profile exists (create if missing)
@@ -152,22 +169,45 @@ export async function ensureUserProfile(userId: string, email: string, name?: st
     return data
 }
 
-// Close session after export
-export async function closeSession(sessionId: string, audioUrl: string, audioType: 'mp3' | 'mp4' | 'wav'): Promise<boolean> {
+// Update session title in database
+export async function updateSessionTitle(sessionId: string, title: string): Promise<boolean> {
     const supabase = createClient()
 
     const { error } = await supabase
         .from('audio_generations')
-        .update({
-            status: 'completed',
-            is_closed: true,
-            audio_url: audioUrl,
-            audio_type: audioType
-        })
+        .update({ title })
         .eq('id', sessionId)
 
     if (error) {
-        console.error('Error closing session:', error.message || error)
+        console.error('Error updating session title:', error.message || JSON.stringify(error))
+        return false
+    }
+    return true
+}
+
+// Close session after export
+export async function closeSession(sessionId: string, audioUrl: string, audioType: 'mp3' | 'mp4' | 'wav', title?: string): Promise<boolean> {
+    const supabase = createClient()
+
+    const updateData: Record<string, unknown> = {
+        status: 'completed',
+        is_closed: true,
+        audio_url: audioUrl,
+        audio_type: audioType
+    }
+
+    // Include title if provided
+    if (title) {
+        updateData.title = title
+    }
+
+    const { error } = await supabase
+        .from('audio_generations')
+        .update(updateData)
+        .eq('id', sessionId)
+
+    if (error) {
+        console.error('Error closing session:', error.message || JSON.stringify(error))
         return false
     }
     return true
@@ -201,7 +241,7 @@ export async function toggleUserBan(userId: string, shouldBan: boolean): Promise
 
     // Check if current user is admin first (extra security layer)
     const { data: { user } } = await supabase.auth.getUser()
-    if (user?.email !== 'damon66.op@gmail.com') {
+    if (!isAdminEmail(user?.email)) {
         console.error('Unauthorized: Only admin can ban users')
         return false
     }
@@ -229,6 +269,29 @@ export async function deleteSession(sessionId: string): Promise<boolean> {
 
     if (error) {
         console.error('Error deleting session:', error)
+        return false
+    }
+    return true
+}
+
+// Reset user's generation count (Admin only)
+export async function resetGenerationCount(userId: string): Promise<boolean> {
+    const supabase = createClient()
+
+    // Check if current user is admin first (extra security layer)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!isAdminEmail(user?.email)) {
+        console.error('Unauthorized: Only admin can reset generation counts')
+        return false
+    }
+
+    const { error } = await supabase
+        .from('users')
+        .update({ generations_used: 0 })
+        .eq('id', userId)
+
+    if (error) {
+        console.error('Error resetting generation count:', error)
         return false
     }
     return true

@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Track, getEffectiveDuration, getTrackBounds } from './types';
-import { ZoomIn, ZoomOut, Monitor, Volume2, VolumeX, Headphones, Move, Clock, MousePointerClick, GripVertical, Play } from 'lucide-react';
+import { ZoomIn, ZoomOut, Monitor, Volume2, VolumeX, Headphones, Move, Clock, MousePointerClick, GripVertical, Play, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface TimelineProps {
     tracks: Track[];
@@ -13,6 +13,36 @@ interface TimelineProps {
     setZoom: (zoom: number) => void;
     onDropAsset: (assetData: string) => void;
     onSeek: (time: number) => void;
+}
+
+// Helper: Extract peaks from audio URL
+async function extractPeaks(url: string, duration: number): Promise<number[]> {
+    try {
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+
+        // Use OfflineAudioContext for faster decoding without hardware limit issues
+        const offlineCtx = new OfflineAudioContext(1, 44100 * duration, 44100);
+        const audioBuffer = await offlineCtx.decodeAudioData(arrayBuffer);
+
+        const rawData = audioBuffer.getChannelData(0);
+        const samples = 500; // Fixed resolution for now
+        const blockSize = Math.floor(rawData.length / samples);
+        const peaks = [];
+
+        for (let i = 0; i < samples; i++) {
+            let max = 0;
+            const start = i * blockSize;
+            for (let j = 0; j < blockSize; j++) {
+                if (Math.abs(rawData[start + j]) > max) max = Math.abs(rawData[start + j]);
+            }
+            peaks.push(max);
+        }
+        return peaks;
+    } catch (e) {
+        console.error("Waveform generation failed:", e);
+        return [];
+    }
 }
 
 export default function Timeline({
@@ -32,6 +62,20 @@ export default function Timeline({
     const containerRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null); // Ruler
     const tracksContainerRef = useRef<HTMLDivElement>(null); // Tracks Area (Main Scroll)
+
+    // Process Waveforms
+    useEffect(() => {
+        tracks.forEach(async (track) => {
+            if (track.type === 'audio' && track.url && !track.waveform) {
+                // Generate waveform
+                console.log("Generating waveform for:", track.name);
+                const peaks = await extractPeaks(track.url, track.duration);
+                if (peaks.length > 0) {
+                    onUpdateTrack(track.id, { waveform: peaks });
+                }
+            }
+        });
+    }, [tracks, onUpdateTrack]);
 
     // Trim handle dragging state
     const [trimDrag, setTrimDrag] = useState<{
@@ -54,36 +98,47 @@ export default function Timeline({
     const videoTracks = tracks.filter(t => t.type === 'video' || t.type === 'image');
     const audioTracks = tracks.filter(t => t.type === 'audio');
 
-    // Generate accurate-looking waveform paths using seeded random based on TIME
+    // Generate waveform path from real data or placeholder
     const getWaveformPath = (trackId: string, duration: number, height: number, color: string) => {
-        const seed = trackId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const baseTimeStep = 0.005; // 200 samples per second
-        const barPixelWidth = 2;
-        const minPixelSpacing = 4; // Minimum pixels between bar centers
-        const pixelsPerBaseSample = baseTimeStep * zoom;
+        const track = tracks.find(t => t.id === trackId);
 
-        let skipFactor = 1;
-        while (pixelsPerBaseSample * skipFactor < minPixelSpacing) {
-            skipFactor *= 2;
+        // 1. Loading State (Animated Pulse)
+        if (!track?.waveform) {
+            const width = duration * zoom;
+            // Simple placeholder line
+            return <path d={`M0,${height / 2} L${width},${height / 2}`} stroke={color} strokeWidth="2" strokeDasharray="4 4" opacity="0.5" />;
         }
 
-        const effectiveTimeStep = baseTimeStep * skipFactor;
-        const totalSamples = Math.ceil(duration / effectiveTimeStep);
-        let pathData = "";
+        // 2. Real Waveform Rendering
+        const peaks = track.waveform;
+        const width = duration * zoom;
+        const step = width / peaks.length;
 
-        for (let i = 0; i < totalSamples; i++) {
-            const time = i * effectiveTimeStep;
-            const x = time * zoom;
-            const n1 = Math.sin(time * 15 + seed);
-            const n2 = Math.sin(time * 60 + seed * 1.3);
-            const n3 = Math.sin(time * 120 + seed * 0.7);
-            const noise = (n1 * 0.5 + n2 * 0.3 + n3 * 0.2);
-            const amplitude = Math.abs(noise);
-            const barHeight = Math.max(4, amplitude * (height * 0.8));
-            const y = (height - barHeight) / 2;
-            pathData += `M${x},${y} v${barHeight} `;
+        // Construct a single continuous filled shape
+        // Move to start-center
+        let pathData = `M 0 ${height / 2} `;
+
+        // Draw Top Envelope
+        for (let i = 0; i < peaks.length; i++) {
+            const x = i * step;
+            const amplitude = peaks[i] * (height / 2) * 0.95; // 95% height
+            const y = (height / 2) - amplitude;
+            // Use quadratic curve for smoother look? slightly heavy. specific LineTo is safer/faster.
+            pathData += `L ${x.toFixed(1)} ${y.toFixed(1)} `;
         }
-        return <path d={pathData} stroke={color} strokeWidth={barPixelWidth} strokeLinecap="round" />;
+
+        // Draw Bottom Envelope (in reverse)
+        for (let i = peaks.length - 1; i >= 0; i--) {
+            const x = i * step;
+            const amplitude = peaks[i] * (height / 2) * 0.95;
+            const y = (height / 2) + amplitude;
+            pathData += `L ${x.toFixed(1)} ${y.toFixed(1)} `;
+        }
+
+        // Close shape
+        pathData += `Z`;
+
+        return <path d={pathData} fill={color} fillOpacity="0.7" />;
     };
 
     // Calculate time markers for the ruler based on zoom
@@ -113,28 +168,33 @@ export default function Timeline({
     };
 
     // Handle Mouse Wheel Zoom
+    // Plain scroll on timeline = zoom. Hold Shift = horizontal scroll.
     const handleWheel = (e: React.WheelEvent) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const bgRect = tracksContainerRef.current?.getBoundingClientRect();
-            if (!bgRect) return;
-
-            const mouseX = e.clientX - bgRect.left + (tracksContainerRef.current?.scrollLeft || 0);
-            const mouseTime = mouseX / zoom;
-
-            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-            const newZoom = Math.min(300, Math.max(2, zoom * zoomFactor));
-
-            setZoom(newZoom);
-
-            // Center zoom on mouse
-            setTimeout(() => {
-                if (tracksContainerRef.current) {
-                    const newScrollLeft = (mouseTime * newZoom) - (e.clientX - bgRect.left);
-                    tracksContainerRef.current.scrollLeft = newScrollLeft;
-                }
-            }, 0);
+        // If Shift is held, allow normal horizontal scroll
+        if (e.shiftKey) {
+            return; // Let browser handle horizontal scroll  
         }
+
+        // Otherwise, scroll = zoom
+        e.preventDefault();
+        const bgRect = tracksContainerRef.current?.getBoundingClientRect();
+        if (!bgRect) return;
+
+        const mouseX = e.clientX - bgRect.left + (tracksContainerRef.current?.scrollLeft || 0);
+        const mouseTime = mouseX / zoom;
+
+        const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87; // Slightly faster zoom
+        const newZoom = Math.min(300, Math.max(2, zoom * zoomFactor));
+
+        setZoom(newZoom);
+
+        // Center zoom on mouse position
+        setTimeout(() => {
+            if (tracksContainerRef.current) {
+                const newScrollLeft = (mouseTime * newZoom) - (e.clientX - bgRect.left);
+                tracksContainerRef.current.scrollLeft = newScrollLeft;
+            }
+        }, 0);
     };
 
     // Click on ruler to seek
@@ -366,7 +426,7 @@ export default function Timeline({
                         <div
                             key={track.id}
                             onClick={() => onSelectTrack(track.id)}
-                            className={`h-24 border-b border-white/[0.04] px-4 flex flex-col justify-center gap-1 transition-colors relative group
+                            className={`${track.isCollapsed ? 'h-10' : 'h-24'} border-b border-white/[0.04] px-4 flex flex-col justify-center gap-1 transition-all duration-300 relative group
                                 ${selectedTrackId === track.id ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'}`}
                         >
                             {/* Selection Indicator */}
@@ -376,6 +436,15 @@ export default function Timeline({
 
                             <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2 text-gray-300 font-medium truncate max-w-[120px]">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onUpdateTrack(track.id, { isCollapsed: !track.isCollapsed });
+                                        }}
+                                        className="text-gray-500 hover:text-white transition-colors"
+                                    >
+                                        {track.isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                    </button>
                                     {track.type === 'video' || track.type === 'image' ? <Monitor className="w-3.5 h-3.5 text-indigo-400" /> : <Headphones className="w-3.5 h-3.5 text-blue-400" />}
                                     <span className="truncate">{track.name}</span>
                                 </div>
@@ -392,27 +461,29 @@ export default function Timeline({
                                 </div>
                             </div>
 
-                            {/* Volume Slider - Small */}
-                            <div className="w-full flex items-center gap-2 group/vol">
-                                <span className="text-[9px] text-gray-600 font-mono w-6">
-                                    {Math.round(track.volume * 100)}%
-                                </span>
-                                <div className="flex-1 h-1 bg-white/[0.1] rounded-full overflow-hidden relative">
-                                    <div
-                                        className="absolute h-full bg-gray-500 rounded-full group-hover/vol:bg-blue-500 transition-colors"
-                                        style={{ width: `${track.volume * 100}%` }}
-                                    />
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="1"
-                                        step="0.01"
-                                        value={track.volume}
-                                        onChange={(e) => onUpdateTrack(track.id, { volume: parseFloat(e.target.value) })}
-                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                    />
+                            {/* Volume Slider - Small (Hidden when collapsed) */}
+                            {!track.isCollapsed && (
+                                <div className="w-full flex items-center gap-2 group/vol">
+                                    <span className="text-[9px] text-gray-600 font-mono w-6">
+                                        {Math.round(track.volume)}%
+                                    </span>
+                                    <div className="flex-1 h-1 bg-white/[0.1] rounded-full overflow-hidden relative">
+                                        <div
+                                            className="absolute h-full bg-gray-500 rounded-full group-hover/vol:bg-blue-500 transition-colors"
+                                            style={{ width: `${track.volume}%` }}
+                                        />
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            step="1"
+                                            value={track.volume}
+                                            onChange={(e) => onUpdateTrack(track.id, { volume: parseFloat(e.target.value) })}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     ))}
 
@@ -457,7 +528,7 @@ export default function Timeline({
                             return (
                                 <div
                                     key={track.id}
-                                    className="h-24 border-b border-white/[0.04] relative group"
+                                    className={`${track.isCollapsed ? 'h-10' : 'h-24'} border-b border-white/[0.04] relative group transition-all duration-300`}
                                     onClick={() => onSelectTrack(track.id)}
                                 >
                                     <div
@@ -480,10 +551,10 @@ export default function Timeline({
                                                 <svg
                                                     key={`waveform-${track.id}-${zoom}`}
                                                     className="w-full h-full text-blue-500/50"
-                                                    viewBox={`0 0 ${Math.max(20, effectiveDuration * zoom)} 96`}
+                                                    viewBox={`0 0 ${Math.max(20, effectiveDuration * zoom)} ${track.isCollapsed ? 40 : 96}`}
                                                     preserveAspectRatio="none"
                                                 >
-                                                    {getWaveformPath(track.id, effectiveDuration, 96, selectedTrackId === track.id ? 'rgb(59, 130, 246)' : 'rgba(59, 130, 246, 0.5)')}
+                                                    {getWaveformPath(track.id, effectiveDuration, track.isCollapsed ? 40 : 96, selectedTrackId === track.id ? 'rgb(59, 130, 246)' : 'rgba(59, 130, 246, 0.5)')}
                                                 </svg>
                                             </div>
                                         )}
@@ -493,7 +564,7 @@ export default function Timeline({
                                             <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none bg-indigo-500/10">
                                                 <div className="flex gap-2 overflow-hidden w-full px-2">
                                                     {Array.from({ length: Math.ceil(effectiveDuration * zoom / 100) }).map((_, i) => (
-                                                        <div key={i} className="h-12 w-20 bg-white/10 rounded-md flex-shrink-0" />
+                                                        <div key={i} className={`${track.isCollapsed ? 'h-6 w-10' : 'h-12 w-20'} bg-white/10 rounded-md flex-shrink-0`} />
                                                     ))}
                                                 </div>
                                             </div>

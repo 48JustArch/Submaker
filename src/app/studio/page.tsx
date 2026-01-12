@@ -4,18 +4,23 @@ import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { Folder, Sliders } from 'lucide-react';
 import StudioHeader from '@/components/studio/StudioHeader';
 import MediaLibrary from '@/components/studio/MediaLibrary';
+import AudioGenerators from '@/components/studio/AudioGenerators';
+
 import AffirmationGenerator from '@/components/studio/AffirmationGenerator';
 import VideoPreview from '@/components/studio/VideoPreview';
 import Timeline from '@/components/studio/Timeline';
 import PropertiesPanel from '@/components/studio/PropertiesPanel';
 import UploadedAssets, { UploadedAsset } from '@/components/studio/UploadedAssets';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Track, INITIAL_TRACKS, formatTime } from '@/components/studio/types';
+import { Track, INITIAL_TRACKS, formatTime, Effect, EffectType, ReverbEffect, DelayEffect, ChorusEffect, SubliminalEffect } from '@/components/studio/types';
 import ExportModal from '@/components/studio/ExportModal';
 import SettingsModal from '@/components/studio/SettingsModal';
 import { createClient } from '@/lib/supabase/client';
-import { createSession, canCreateSession } from '@/lib/supabase/sessions';
+import { createSession, canCreateSession, updateSessionTitle } from '@/lib/supabase/sessions';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useToast } from '@/components/ui/Toast';
+import KeyboardShortcutsModal, { useKeyboardShortcuts } from '@/components/studio/KeyboardShortcutsModal';
+import StudioSkeleton from '@/components/studio/StudioSkeleton';
 
 // Session storage key
 const SESSION_STORAGE_KEY = 'subliminal-studio-session';
@@ -32,11 +37,14 @@ function StudioContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const supabase = createClient();
+    const { showToast } = useToast();
 
     const [mode, setMode] = useState<'audio' | 'video'>('audio');
     const [showAffirmations, setShowAffirmations] = useState(false);
+    const [showGenerators, setShowGenerators] = useState(false);
     const [showExportModal, setShowExportModal] = useState(false);
     const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
     const [rightPanelTab, setRightPanelTab] = useState<'uploads' | 'properties'>('uploads');
 
     // User and Session State
@@ -101,9 +109,15 @@ function StudioContent() {
     // Uploaded Assets State
     const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
 
+    // Track if session has been initialized to prevent duplicates
+    const sessionInitialized = useRef(false);
+
     // Initialize user and create session
     useEffect(() => {
         async function initSession() {
+            // Prevent double initialization
+            if (sessionInitialized.current) return;
+
             const { data: { user } } = await supabase.auth.getUser();
 
             if (!user) {
@@ -125,7 +139,7 @@ function StudioContent() {
 
             if (!profile) {
                 console.error('Failed to create user profile');
-                alert('Failed to initialize user profile. Please try again.');
+                showToast('error', 'Failed to initialize user profile. Please try again.');
                 return;
             }
 
@@ -133,15 +147,16 @@ function StudioContent() {
             const existingSessionId = searchParams.get('session');
 
             if (existingSessionId) {
-                // Load existing session logic would go here
+                // Load existing session - don't create a new one
                 setSessionId(existingSessionId);
+                sessionInitialized.current = true;
                 console.log("Loading existing session:", existingSessionId);
                 // For now, we reuse local storage or DB loading logic if implemented
             } else {
                 // Check if user can create a new session
                 const canCreate = await canCreateSession(user.id);
-                if (!canCreate) {
-                    alert('You have reached your draft limit (3 active drafts). Please finish or delete an existing draft.');
+                if (!canCreate.allowed) {
+                    showToast('warning', canCreate.reason || 'Cannot create new session.');
                     router.push('/dashboard');
                     return;
                 }
@@ -156,10 +171,12 @@ function StudioContent() {
                 const newSession = await createSession(user.id, 'Untitled Session');
                 if (newSession) {
                     setSessionId(newSession.id);
+                    sessionInitialized.current = true;
                     // Update URL without reload to persist ID
                     window.history.replaceState(null, '', `?session=${newSession.id}`);
                 } else {
                     console.error('Failed to create session in database');
+                    showToast('error', 'Failed to create session. Please try again.');
                 }
             }
         }
@@ -167,146 +184,415 @@ function StudioContent() {
         initSession();
     }, []); // Run once on mount
 
-    // Audio playback refs - stores Audio elements for each track
-    const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
+    // Audio Engine Handlers
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const audioNodesRef = useRef<Map<string, {
+        source: MediaElementAudioSourceNode;
+        gain: GainNode;
+        panner: StereoPannerNode;
+        audio: HTMLAudioElement;
+        effectNodes: Map<string, AudioNode[]>; // Keep track of nodes per effect for cleanup/param updates
+        chainInput: AudioNode; // The start of the chain (usually source)
+        chainOutput: AudioNode; // The end of the chain (usually panner input)
+    }>>(new Map());
 
-    // Sync audio elements when tracks change
+    // Initialize Audio Context on first interaction
+    const initAudioContext = useCallback(() => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        if (audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume();
+        }
+    }, []);
+
+    // Helper: Generate Impulse Response for Reverb
+    const createImpulseResponse = (ctx: AudioContext, duration: number, decay: number) => {
+        const rate = ctx.sampleRate;
+        const length = rate * duration;
+        const impulse = ctx.createBuffer(2, length, rate);
+        const left = impulse.getChannelData(0);
+        const right = impulse.getChannelData(1);
+
+        for (let i = 0; i < length; i++) {
+            const n = i / length; // Normalized progression
+            // White noise with exponential decay
+            const noise = (Math.random() * 2 - 1) * Math.pow(1 - n, decay);
+            left[i] = noise;
+            right[i] = noise;
+        }
+        return impulse;
+    };
+
+    // Helper: Build DSP nodes for a single effect
+    const createEffectNodes = (ctx: AudioContext, effect: Effect, input: AudioNode, output: AudioNode): AudioNode => {
+        if (!effect.active) return input; // Bypass
+
+        switch (effect.type) {
+            case 'reverb': {
+                const { decay = 2.0, mix = 0.5, preDelay = 0.01 } = effect.params as ReverbEffect['params'];
+
+                const inputGain = ctx.createGain();
+                const reverbGain = ctx.createGain();
+                reverbGain.gain.value = mix;
+
+                const dryGain = ctx.createGain();
+                dryGain.gain.value = 1 - mix;
+
+                const convolver = ctx.createConvolver();
+                convolver.buffer = createImpulseResponse(ctx, decay, decay); // Simple decay model
+
+                const delayNode = ctx.createDelay();
+                delayNode.delayTime.value = preDelay;
+
+                // Graph: Input -> [Dry, Delay->Convolver->Wet] -> Output
+                input.connect(inputGain);
+                inputGain.connect(dryGain);
+                inputGain.connect(delayNode);
+                delayNode.connect(convolver);
+                convolver.connect(reverbGain);
+
+                dryGain.connect(output);
+                reverbGain.connect(output);
+
+                return output; // Return destination for next node? No, this architecture is tricky. 
+                // Better approach: Return the INPUT node of this effect, and connect the OUTPUT of this effect to the 'next' node passed in?
+                // Or standard chain: Input -> Effect -> Output. 
+                // Let's refine: We need to return the 'Node to connect TO'.
+            }
+            default: return input;
+        }
+        return input;
+    };
+
+    // Re-implemented Graph Builder
+    const updateAudioGraph = (track: Track) => {
+        const ctx = audioContextRef.current;
+        if (!ctx) return;
+
+        let nodes = audioNodesRef.current.get(track.id);
+
+        // 1. Create Base Nodes if missing
+        if (!nodes) {
+            const audio = new Audio(track.url);
+            // audio.crossOrigin = "anonymous"; // Removed to prevent CORS errors on non-configured remote assets
+            const source = ctx.createMediaElementSource(audio);
+            const gain = ctx.createGain();
+            const panner = ctx.createStereoPanner();
+
+            // Initial simple connection to ensure flow
+            // source.connect(gain); gain.connect(panner); panner.connect(ctx.destination);
+
+            nodes = { source, gain, panner, audio, effectNodes: new Map(), chainInput: source, chainOutput: gain };
+            audioNodesRef.current.set(track.id, nodes);
+
+            // Events
+            audio.onerror = (e) => console.error(`Audio playback error for track ${track.name}:`, audio.error);
+        }
+
+        // Disconnect all existing connections from the source and any previous effect chain
+        nodes.gain.disconnect();
+        nodes.panner.disconnect();
+
+        // Disconnect and clear old effect nodes
+        nodes.effectNodes.forEach(nodeArray => {
+            nodeArray.forEach(node => {
+                if (node instanceof AudioNode) {
+                    try { node.disconnect(); } catch (e) { /* already disconnected */ }
+                }
+                if (node instanceof OscillatorNode) {
+                    try { node.stop(); } catch (e) { /* already stopped */ }
+                }
+            });
+        });
+        nodes.effectNodes.clear();
+
+        let currentNode: AudioNode = nodes.source;
+
+        // Process Effects
+        track.effects?.forEach(effect => {
+            if (!effect.active) return;
+
+            const effectNodeList: AudioNode[] = []; // To store nodes created for this effect
+
+            if (effect.type === 'reverb') {
+                const { decay, mix, preDelay } = effect.params as ReverbEffect['params'];
+                const convolver = ctx.createConvolver();
+                convolver.buffer = createImpulseResponse(ctx, decay, 2);
+
+                const wet = ctx.createGain(); wet.gain.value = mix;
+                const dry = ctx.createGain(); dry.gain.value = 1 - mix;
+
+                const delayNode = ctx.createDelay();
+                delayNode.delayTime.value = preDelay;
+
+                currentNode.connect(delayNode);
+                delayNode.connect(convolver);
+                convolver.connect(wet);
+
+                currentNode.connect(dry);
+
+                const output = ctx.createGain(); // Sum dry and wet
+                wet.connect(output);
+                dry.connect(output);
+
+                currentNode = output;
+                effectNodeList.push(convolver, wet, dry, delayNode, output);
+            }
+            else if (effect.type === 'delay') {
+                const { time, feedback, mix } = effect.params as DelayEffect['params'];
+                const delay = ctx.createDelay(1.0);
+                delay.delayTime.value = time;
+
+                const fbGain = ctx.createGain();
+                fbGain.gain.value = feedback;
+
+                const wet = ctx.createGain(); wet.gain.value = mix;
+                const dry = ctx.createGain(); dry.gain.value = 1 - mix;
+
+                currentNode.connect(delay);
+                delay.connect(fbGain);
+                fbGain.connect(delay); // Feedback loop
+
+                delay.connect(wet);
+                currentNode.connect(dry);
+
+                const output = ctx.createGain(); // Sum dry and wet
+                wet.connect(output);
+                dry.connect(output);
+                currentNode = output;
+                effectNodeList.push(delay, fbGain, wet, dry, output);
+            }
+            else if (effect.type === 'chorus') {
+                // Chorus: Delay modulated by LFO
+                const { rate, depth, mix } = effect.params as ChorusEffect['params'];
+                const delay = ctx.createDelay();
+                delay.delayTime.value = 0.03; // Base delay
+
+                const lfo = ctx.createOscillator();
+                lfo.type = 'sine';
+                lfo.frequency.value = rate;
+
+                const lfoGain = ctx.createGain();
+                lfoGain.gain.value = depth * 0.005; // Scale depth for delay time modulation
+
+                lfo.connect(lfoGain);
+                lfoGain.connect(delay.delayTime);
+                lfo.start(0); // Start immediately
+
+                const wet = ctx.createGain(); wet.gain.value = mix;
+                const dry = ctx.createGain(); dry.gain.value = 1 - mix;
+
+                currentNode.connect(delay);
+                delay.connect(wet);
+                currentNode.connect(dry);
+
+                const output = ctx.createGain(); // Sum dry and wet
+                wet.connect(output);
+                dry.connect(output);
+                currentNode = output;
+                effectNodeList.push(delay, lfo, lfoGain, wet, dry, output);
+            }
+            else if (effect.type === 'subliminal') {
+                // DSB-SC Modulation (Ring Modulation)
+                const { frequency, volume } = effect.params as SubliminalEffect['params'];
+
+                const carrier = ctx.createOscillator();
+                carrier.type = 'sine';
+                carrier.frequency.value = frequency;
+                carrier.start(0); // Start immediately
+
+                const ringMod = ctx.createGain();
+                ringMod.gain.value = 0; // Initial value 0, modulated by audio
+
+                currentNode.connect(ringMod.gain); // Audio signal modulates the gain of the ringMod
+                carrier.connect(ringMod); // Carrier signal passes through the ringMod
+
+                // Apply output volume
+                const outGain = ctx.createGain();
+                outGain.gain.value = volume;
+
+                ringMod.connect(outGain);
+                currentNode = outGain;
+                effectNodeList.push(carrier, ringMod, outGain);
+            }
+            nodes.effectNodes.set(effect.id, effectNodeList);
+        });
+
+        // Final Chain connections
+        // CurrentNode (output of last effect or source) -> Gain (Volume) -> Panner -> Destination
+        currentNode.connect(nodes.gain);
+        nodes.gain.connect(nodes.panner);
+        nodes.panner.connect(ctx.destination);
+
+        // Update Static Props
+        nodes.gain.gain.value = track.volume / 100;
+        nodes.panner.pan.value = track.pan || 0;
+    };
+
+    // Sync audio graph when tracks/effects change
     useEffect(() => {
+        if (!audioContextRef.current) return;
+
         tracks.forEach(track => {
-            if (track.type === 'audio' && track.url && !audioRefs.current.has(track.id)) {
-                const audio = new Audio(track.url);
-                audio.crossOrigin = "anonymous"; // Enable cross-origin playback
-                audio.volume = track.volume / 100;
-
-                // Add error listener
-                audio.onerror = (e) => {
-                    console.error(`Audio playback error for track ${track.name}:`, audio.error);
-                };
-
-                audioRefs.current.set(track.id, audio);
+            if (track.type === 'audio' && track.url) {
+                updateAudioGraph(track);
             }
         });
 
-        // Clean up removed tracks
-        audioRefs.current.forEach((audio, id) => {
+        // Cleanup removed tracks
+        audioNodesRef.current.forEach((nodes, id) => {
             if (!tracks.find(t => t.id === id)) {
-                audio.pause();
-                audio.src = '';
-                audioRefs.current.delete(id);
+                nodes.audio.pause();
+                nodes.audio.src = '';
+                // Disconnect nodes to free graph
+                nodes.source.disconnect();
+                nodes.gain.disconnect();
+                nodes.panner.disconnect();
+                nodes.effectNodes.forEach(nodeArray => {
+                    nodeArray.forEach(node => {
+                        if (node instanceof AudioNode) {
+                            try { node.disconnect(); } catch (e) { /* already disconnected */ }
+                        }
+                        if (node instanceof OscillatorNode) {
+                            try { node.stop(); } catch (e) { /* already stopped */ }
+                        }
+                    });
+                });
+                audioNodesRef.current.delete(id);
             }
         });
-    }, [tracks]);
+    }, [tracks]); // Re-run when tracks array changes (including effects within tracks)
+
+    // Ensure AudioContext is ready on any playback attempt
+    useEffect(() => {
+        if (isPlaying || tracks.length > 0) {
+            initAudioContext();
+        }
+    }, [isPlaying, tracks.length, initAudioContext]);
 
     // Handle play/pause with Mute/Solo logic
     useEffect(() => {
-        // Check if any track is in Solo mode
         const hasSoloTrack = tracks.some(t => t.isSolo);
 
+        // Ensure context is running
+        if (isPlaying && audioContextRef.current?.state === 'suspended') {
+            audioContextRef.current.resume();
+        }
+
         if (isPlaying) {
-            // Start audio tracks from current position
             tracks.forEach(track => {
                 if (track.type === 'audio') {
-                    const audio = audioRefs.current.get(track.id);
-                    if (audio) {
+                    const nodes = audioNodesRef.current.get(track.id);
+                    if (nodes) {
                         const shouldPlay = hasSoloTrack ? track.isSolo : !track.isMuted;
 
                         if (shouldPlay) {
-                            if (Math.abs(audio.currentTime - currentTime) > 0.2) {
-                                audio.currentTime = currentTime;
-                            }
-                            audio.volume = track.volume / 100;
-                            const playPromise = audio.play();
-                            if (playPromise !== undefined) {
-                                playPromise.catch(error => {
-                                    console.warn("Audio play failed (autopolicies?):", error);
-                                });
+                            // Calculate relative time within the audio file
+                            const trackStart = track.startTime || 0;
+                            const trackDuration = track.outPoint ? track.outPoint - (track.inPoint || 0) : track.duration;
+                            const trackEnd = trackStart + trackDuration;
+
+                            // Check if head is within this clip's range
+                            if (currentTime >= trackStart && currentTime < trackEnd) {
+                                const relativeTime = currentTime - trackStart + (track.inPoint || 0);
+
+                                if (Math.abs(nodes.audio.currentTime - relativeTime) > 0.2 || nodes.audio.paused) {
+                                    nodes.audio.currentTime = relativeTime;
+                                }
+
+                                // Re-sync properties just in case
+                                nodes.gain.gain.value = track.volume / 100;
+                                nodes.panner.pan.value = track.pan || 0;
+
+                                const playPromise = nodes.audio.play();
+                                if (playPromise !== undefined) {
+                                    playPromise.catch(error => {
+                                        // Ignore abort errors from rapid pausing/seeking
+                                        if (error.name !== 'AbortError') {
+                                            console.warn("Audio play failed:", error);
+                                        }
+                                    });
+                                }
+                            } else {
+                                // Outside of clip range
+                                nodes.audio.pause();
                             }
                         } else {
-                            audio.pause();
+                            nodes.audio.pause();
                         }
                     }
                 }
             });
         } else {
-            // Pause all audio
-            audioRefs.current.forEach(audio => audio.pause());
+            // Pause all
+            audioNodesRef.current.forEach(nodes => nodes.audio.pause());
         }
-    }, [isPlaying, tracks]);
+    }, [isPlaying, tracks, currentTime]);
 
-    // Update volume when track volume changes
-    const syncTrackVolume = useCallback((trackId: string, volume: number) => {
-        const audio = audioRefs.current.get(trackId);
-        if (audio) {
-            audio.volume = volume / 100;
+    // Update volume/pan efficiently when props change
+    const syncTrackProperties = useCallback((trackId: string, updates: Partial<Track>) => {
+        const nodes = audioNodesRef.current.get(trackId);
+        if (nodes) {
+            if (updates.volume !== undefined) {
+                nodes.gain.gain.setValueAtTime(updates.volume / 100, audioContextRef.current?.currentTime || 0);
+            }
+            if (updates.pan !== undefined) {
+                nodes.panner.pan.setValueAtTime(updates.pan, audioContextRef.current?.currentTime || 0);
+            }
         }
     }, []);
 
-    // Playback Timer - driven by first audio track or interval
+    // Playback Timer
     useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (isPlaying) {
-            interval = setInterval(() => {
-                // Try to sync with first playing audio
-                const firstAudio = Array.from(audioRefs.current.values())[0];
-                if (firstAudio && !firstAudio.paused) {
-                    setCurrentTime(firstAudio.currentTime);
-                } else {
-                    setCurrentTime(prev => prev + 0.1);
-                }
-            }, 100);
-        }
-        return () => clearInterval(interval);
-    }, [isPlaying]);
+        let animationId: number;
+        let lastTimestamp: number | null = null;
 
-    // Keyboard shortcuts
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            // Don't trigger shortcuts when typing in input fields
-            const target = e.target as HTMLElement;
-            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-                return;
+        const tick = (timestamp: number) => {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const delta = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            const audioEntries = Array.from(audioNodesRef.current.entries());
+            // Find a track that is actually playing audio to use as the master clock
+            const playingEntry = audioEntries.find(([id, n]) => !n.audio.paused && !isNaN(n.audio.currentTime) && n.audio.currentTime > 0);
+
+            if (playingEntry) {
+                const [id, nodes] = playingEntry;
+                const track = tracks.find(t => t.id === id);
+                if (track) {
+                    // Sync global time to audio time + offset
+                    // Global = AudioTime - InPoint + StartTime
+                    const calculatedTime = nodes.audio.currentTime - (track.inPoint || 0) + (track.startTime || 0);
+                    setCurrentTime(calculatedTime);
+                } else {
+                    // Fallback if track not found (shouldn't happen)
+                    setCurrentTime(prev => prev + delta);
+                }
+            } else {
+                setCurrentTime(prev => prev + delta);
             }
 
-            // Undo/Redo shortcuts
-            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
-                e.preventDefault();
-                if (e.shiftKey) {
-                    // Redo: Ctrl+Shift+Z
-                    handleRedo();
-                } else {
-                    // Undo: Ctrl+Z
-                    handleUndo();
-                }
-                return;
-            }
-
-            switch (e.code) {
-                case 'Space':
-                    e.preventDefault();
-                    setIsPlaying(prev => !prev);
-                    break;
-                case 'Delete':
-                case 'Backspace':
-                    if (selectedTrackId) {
-                        e.preventDefault();
-                        handleDeleteTrack(selectedTrackId);
-                    }
-                    break;
-                case 'Escape':
-                    setSelectedTrackId(null);
-                    break;
+            if (isPlaying) {
+                animationId = requestAnimationFrame(tick);
             }
         };
 
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedTrackId]);
+        if (isPlaying) {
+            lastTimestamp = null;
+            animationId = requestAnimationFrame(tick);
+        }
+
+        return () => {
+            if (animationId) cancelAnimationFrame(animationId);
+        };
+    }, [isPlaying, tracks]);
 
     // Seek handler
     const handleSeek = useCallback((time: number) => {
         setCurrentTime(time);
-        audioRefs.current.forEach(audio => {
-            audio.currentTime = time;
+        audioNodesRef.current.forEach(nodes => {
+            nodes.audio.currentTime = time;
         });
     }, []);
 
@@ -314,9 +600,9 @@ function StudioContent() {
     const handleStop = useCallback(() => {
         setIsPlaying(false);
         setCurrentTime(0);
-        audioRefs.current.forEach(audio => {
-            audio.pause();
-            audio.currentTime = 0;
+        audioNodesRef.current.forEach(nodes => {
+            nodes.audio.pause();
+            nodes.audio.currentTime = 0;
         });
     }, []);
 
@@ -358,7 +644,7 @@ function StudioContent() {
 
                 // Check 5-minute limit for audio files
                 if (fileType === 'audio' && duration > 300) {
-                    alert('Audio files must be 5 minutes or less. Please trim your audio and try again.');
+                    showToast('warning', 'Audio files must be 5 minutes or less. Please trim your audio.');
                     URL.revokeObjectURL(url);
                     return;
                 }
@@ -439,8 +725,20 @@ function StudioContent() {
     // Handle drop on timeline - parses JSON asset data and adds to timeline
     const handleDropAsset = (assetData: string) => {
         try {
-            const asset = JSON.parse(assetData) as UploadedAsset;
-            handleAddAssetToTimeline(asset);
+            const droppedAsset = JSON.parse(assetData) as Partial<UploadedAsset>;
+
+            // Look up the full asset from our state (includes File reference)
+            const fullAsset = uploadedAssets.find(a => a.id === droppedAsset.id);
+
+            if (fullAsset) {
+                // Use the full asset with File reference
+                handleAddAssetToTimeline(fullAsset);
+            } else if (droppedAsset.url) {
+                // Fallback: use the serialized data (won't have File, but has URL)
+                handleAddAssetToTimeline(droppedAsset as UploadedAsset);
+            } else {
+                console.error('Dropped asset not found in library:', droppedAsset.id);
+            }
         } catch (e) {
             console.error('Failed to parse dropped asset:', e);
         }
@@ -448,23 +746,72 @@ function StudioContent() {
 
     const handleUpdateTrack = (id: string, updates: Partial<Track>) => {
         setTracks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-        // Sync volume if it changed
-        if (updates.volume !== undefined) {
-            syncTrackVolume(id, updates.volume);
-        }
+        // Sync properties efficiently
+        syncTrackProperties(id, updates);
     };
 
     const handleDeleteTrack = (id: string) => {
-        // Clean up audio element
-        const audio = audioRefs.current.get(id);
-        if (audio) {
-            audio.pause();
-            audio.src = '';
-            audioRefs.current.delete(id);
-        }
         setTracks(prev => prev.filter(t => t.id !== id));
         if (selectedTrackId === id) setSelectedTrackId(null);
+        // Audio cleanup is handled by the useEffect hook watching 'tracks'
     };
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Don't trigger shortcuts when typing in input fields
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            // Undo/Redo shortcuts
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    // Redo: Ctrl+Shift+Z
+                    handleRedo();
+                } else {
+                    // Undo: Ctrl+Z
+                    handleUndo();
+                }
+                return;
+            }
+
+            // Export shortcut: Ctrl+E
+            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyE') {
+                e.preventDefault();
+                setShowExportModal(true);
+                return;
+            }
+
+            switch (e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    setIsPlaying(prev => !prev);
+                    break;
+                case 'Delete':
+                case 'Backspace':
+                    if (selectedTrackId) {
+                        e.preventDefault();
+                        handleDeleteTrack(selectedTrackId);
+                    }
+                    break;
+                case 'Escape':
+                    setSelectedTrackId(null);
+                    setShowKeyboardShortcuts(false);
+                    break;
+            }
+
+            // ? key to show keyboard shortcuts
+            if (e.key === '?') {
+                setShowKeyboardShortcuts(prev => !prev);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedTrackId, handleUndo, handleRedo, handleDeleteTrack]);
 
     const selectedTrack = tracks.find(t => t.id === selectedTrackId);
 
@@ -484,7 +831,7 @@ function StudioContent() {
         }
 
         // Debounce save by 1 second
-        saveTimeoutRef.current = setTimeout(() => {
+        saveTimeoutRef.current = setTimeout(async () => {
             setIsSaving(true);
             try {
                 const sessionData: SessionData = {
@@ -499,6 +846,12 @@ function StudioContent() {
                     savedAt: new Date().toISOString()
                 };
                 localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+
+                // Also sync session title to database
+                if (sessionId && sessionName !== 'Untitled Session') {
+                    await updateSessionTitle(sessionId, sessionName);
+                }
+
                 setLastSaved(new Date());
             } catch (e) {
                 console.error('Failed to save session:', e);
@@ -512,7 +865,24 @@ function StudioContent() {
                 clearTimeout(saveTimeoutRef.current);
             }
         };
-    }, [sessionName, mode, zoom, tracks]);
+    }, [sessionName, mode, zoom, tracks, sessionId]);
+
+    // Global Drop Handler for file imports
+    const handleGlobalDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+    const handleGlobalDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+
+        // Handle file drops (External)
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            Array.from(e.dataTransfer.files).forEach(file => {
+                handleAddTrack(file);
+            });
+            return;
+        }
+    }, []);
 
     return (
         <motion.div
@@ -520,6 +890,8 @@ function StudioContent() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
             className="h-screen w-full bg-[#050505] text-white overflow-hidden flex flex-col font-sans"
+            onDragOver={handleGlobalDragOver}
+            onDrop={handleGlobalDrop}
         >
             <StudioHeader
                 mode={mode}
@@ -548,7 +920,41 @@ function StudioContent() {
                     </div>
                     <MediaLibrary
                         onOpenAffirmations={() => setShowAffirmations(true)}
+                        onOpenGenerators={() => setShowGenerators(true)}
                         onAddTrack={handleAddTrack}
+                        onAddSampleToTimeline={(sample) => {
+                            // Create a placeholder track for stock samples
+                            // Parse duration from MM:SS format
+                            let durationSeconds = 60;
+                            if (sample.duration) {
+                                const parts = sample.duration.split(':');
+                                if (parts.length === 2) {
+                                    durationSeconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                                }
+                            }
+
+                            const newTrack = {
+                                id: Date.now().toString(),
+                                name: sample.name,
+                                type: sample.type,
+                                duration: durationSeconds,
+                                volume: 75,
+                                isMuted: false,
+                                isSolo: false,
+                                color: sample.type === 'audio'
+                                    ? 'bg-blue-500'
+                                    : sample.type === 'video'
+                                        ? 'bg-indigo-500'
+                                        : 'bg-purple-500',
+                                // Note: Stock samples are placeholders, no actual file
+                                url: undefined,
+                                file: undefined
+                            };
+                            setTracks(prev => [...prev, newTrack as any]);
+                            setSelectedTrackId(newTrack.id);
+                            setRightPanelTab('properties');
+                            showToast('success', `Added "${sample.name}" to timeline`);
+                        }}
                     />
                 </aside>
 
@@ -684,17 +1090,30 @@ function StudioContent() {
                 />
             )}
 
+            {showGenerators && (
+                <AudioGenerators
+                    onClose={() => setShowGenerators(false)}
+                    onAddTrack={handleAddTrack}
+                />
+            )}
+
             <ExportModal
                 isOpen={showExportModal}
                 onClose={() => setShowExportModal(false)}
                 tracks={tracks}
                 sessionId={sessionId || undefined}
                 userId={userId || undefined}
+                sessionName={sessionName}
             />
 
             <SettingsModal
                 isOpen={showSettingsModal}
                 onClose={() => setShowSettingsModal(false)}
+            />
+
+            <KeyboardShortcutsModal
+                isOpen={showKeyboardShortcuts}
+                onClose={() => setShowKeyboardShortcuts(false)}
             />
         </motion.div>
     );
@@ -702,11 +1121,7 @@ function StudioContent() {
 
 export default function StudioPage() {
     return (
-        <Suspense fallback={
-            <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
-                <div className="animate-spin w-8 h-8 border-2 border-white border-t-transparent rounded-full" />
-            </div>
-        }>
+        <Suspense fallback={<StudioSkeleton />}>
             <StudioContent />
         </Suspense>
     );

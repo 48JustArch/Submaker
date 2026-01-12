@@ -1,7 +1,29 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+
+// Helper to check authentication
+async function getAuthenticatedUser() {
+    try {
+        const supabase = await createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) return null;
+        return user;
+    } catch {
+        return null;
+    }
+}
 
 export async function POST(req: Request) {
     try {
+        // Authentication check
+        const user = await getAuthenticatedUser();
+        if (!user) {
+            return NextResponse.json(
+                { error: 'Unauthorized. Please log in to use TTS.' },
+                { status: 401 }
+            );
+        }
+
         const { text, voice } = await req.json();
 
         if (!text) {
@@ -16,7 +38,7 @@ export async function POST(req: Request) {
         // en_us_006: Male (Standard)
         const voiceId = voice === 'female' ? 'en_us_001' : 'en_us_006';
 
-        console.log(`[TTS] Attempting TikTok API for voice: ${voiceId}`);
+        console.log(`[TTS] Attempting TikTok API for voice: ${voiceId} (user: ${user.id})`);
 
         try {
             const controller = new AbortController();
@@ -48,8 +70,9 @@ export async function POST(req: Request) {
                 }
             }
             console.warn(`[TTS] TikTok failed with status: ${tiktokResponse.status}`);
-        } catch (ttError: any) {
-            console.warn('[TTS] TikTok error:', ttError.message || ttError, '- falling back');
+        } catch (ttError: unknown) {
+            const message = ttError instanceof Error ? ttError.message : String(ttError);
+            console.warn('[TTS] TikTok error:', message, '- falling back');
         }
 
         // Strategy 2: Google Translate TTS (Unofficial)
@@ -104,8 +127,9 @@ export async function POST(req: Request) {
                     'Content-Disposition': `attachment; filename="affirmations.mp3"`,
                 },
             });
-        } catch (googleError: any) {
-            console.warn('[TTS] Google TTS error:', googleError.message || googleError);
+        } catch (googleError: unknown) {
+            const message = googleError instanceof Error ? googleError.message : String(googleError);
+            console.warn('[TTS] Google TTS error:', message);
         }
 
         // Strategy 3: Return error with instruction
@@ -118,7 +142,7 @@ export async function POST(req: Request) {
             { status: 503 }
         );
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[TTS] Server Error:', error);
         return NextResponse.json(
             { error: 'Failed to generate audio. Please try again.' },

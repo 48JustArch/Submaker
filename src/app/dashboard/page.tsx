@@ -7,6 +7,9 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getUserSessions, ensureUserProfile, deleteSession, type AudioGeneration, type UserProfile } from '@/lib/supabase/sessions';
+import { isAdminEmail } from '@/lib/config';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 export default function Dashboard() {
     const [user, setUser] = useState<{ id: string; email?: string; user_metadata?: { full_name?: string; avatar_url?: string } } | null>(null);
@@ -15,6 +18,8 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const supabase = createClient();
+    const { showToast } = useToast();
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         async function loadData() {
@@ -86,12 +91,21 @@ export default function Dashboard() {
     };
 
     const handleDelete = async (sessionId: string) => {
-        if (confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
+        const confirmed = await confirm({
+            title: 'Delete Session',
+            message: 'Are you sure you want to delete this session? This action cannot be undone.',
+            confirmText: 'Delete',
+            cancelText: 'Keep It',
+            variant: 'danger'
+        });
+
+        if (confirmed) {
             const success = await deleteSession(sessionId);
             if (success) {
                 setSessions(prev => prev.filter(s => s.id !== sessionId));
+                showToast('success', 'Session deleted successfully');
             } else {
-                alert('Failed to delete session');
+                showToast('error', 'Failed to delete session');
             }
         }
     };
@@ -99,10 +113,28 @@ export default function Dashboard() {
     const canCreateNew = () => {
         // Limit to 3 active drafts
         const draftCount = sessions.filter(s => s.status === 'draft' && !s.is_closed).length;
-        return draftCount < 3;
+        if (draftCount >= 3) return false;
+
+        // Check if user exceeded their exports limit (free plan)
+        if (profile && profile.plan === 'free') {
+            if (profile.generations_used >= profile.generations_limit) return false;
+        }
+
+        return true;
     };
 
-    const isAdmin = user?.email === 'damon66.op@gmail.com';
+    const getCreateBlockReason = () => {
+        const draftCount = sessions.filter(s => s.status === 'draft' && !s.is_closed).length;
+        if (draftCount >= 3) {
+            return 'You have 3 open drafts. Finish or delete one to create new.';
+        }
+        if (profile && profile.plan === 'free' && profile.generations_used >= profile.generations_limit) {
+            return `You've reached your free plan limit (${profile.generations_limit} exports). Upgrade to continue.`;
+        }
+        return '';
+    };
+
+    const isAdmin = isAdminEmail(user?.email);
     const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
 
     if (loading) {
@@ -177,7 +209,7 @@ export default function Dashboard() {
                 {/* New Session Card */}
                 <section>
                     {canCreateNew() ? (
-                        <Link href="/studio" className="group relative overflow-hidden rounded-3xl bg-[#0a0a0a] border border-white/10 p-8 hover:border-white/20 transition-all block">
+                        <Link href="/studio" className="group relative overflow-hidden rounded-3xl bg-[#0a0a0a] border border-white/10 p-8 hover:border-white/20 transition-all block" aria-label="Create new session">
                             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <Plus className="w-32 h-32 text-white" />
                             </div>
@@ -190,14 +222,14 @@ export default function Dashboard() {
                             </div>
                         </Link>
                     ) : (
-                        <div className="rounded-3xl bg-[#0a0a0a] border border-red-500/20 p-8">
+                        <div className="rounded-3xl bg-[#0a0a0a] border border-amber-500/20 p-8" role="alert">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500">
+                                <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
                                     <Settings className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-red-400">Draft Limit Reached</h2>
-                                    <p className="text-gray-500">You have 3 open drafts. Finish or delete one to create new.</p>
+                                    <h2 className="text-xl font-bold text-amber-400">Session Limit Reached</h2>
+                                    <p className="text-gray-500">{getCreateBlockReason()}</p>
                                 </div>
                             </div>
                         </div>

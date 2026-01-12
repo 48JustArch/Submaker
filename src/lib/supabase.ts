@@ -22,7 +22,7 @@ export interface AudioGeneration {
     intention: string | null;
     file_path: string | null;
     duration_seconds: number | null;
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+    status: 'draft' | 'processing' | 'completed' | 'failed';
     metadata: Record<string, unknown> | null;
     created_at: string;
 }
