@@ -33,7 +33,7 @@ const testimonials = [
 
 export default function SocialProof() {
     return (
-        <section className="py-24 px-6 border-t border-white/5 relative overflow-hidden">
+        <section className="py-16 md:py-24 px-4 md:px-6 border-t border-white/5 relative overflow-hidden">
             {/* Background Glow */}
             <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-900/10 blur-[120px] rounded-full pointer-events-none" />
 
@@ -43,7 +43,7 @@ export default function SocialProof() {
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-20 p-8 rounded-2xl bg-white/[0.02] border border-white/5"
+                    className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-12 md:mb-20 p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/5"
                 >
                     {stats.map((stat, i) => (
                         <div key={i} className="text-center">
@@ -57,7 +57,7 @@ export default function SocialProof() {
                 </motion.div>
 
                 {/* Section Header */}
-                <div className="text-center mb-16">
+                <div className="text-center mb-12 md:mb-16">
                     <h2 className="text-3xl md:text-5xl font-bold tracking-tighter mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/40">
                         Trusted by Creators
                     </h2>
@@ -67,7 +67,7 @@ export default function SocialProof() {
                 </div>
 
                 {/* Testimonials Grid */}
-                <div className="grid md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {testimonials.map((t, i) => (
                         <motion.div
                             key={i}

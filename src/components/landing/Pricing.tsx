@@ -32,19 +32,20 @@ const plans = [
 
 export default function Pricing() {
     return (
-        <section id="pricing" className="py-32 px-6 border-t border-white/5 relative overflow-hidden">
+    return (
+        <section id="pricing" className="py-16 md:py-32 px-4 md:px-6 border-t border-white/5 relative overflow-hidden">
             {/* Ambient Background Glow - Silver/White */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-white/5 blur-[120px] rounded-full pointer-events-none" />
 
             <div className="max-w-6xl mx-auto relative z-10">
-                <div className="mb-24 text-center">
-                    <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white via-gray-200 to-gray-500">Access the Source</h2>
-                    <p className="text-xl text-gray-400 font-light">
+                <div className="mb-12 md:mb-24 text-center">
+                    <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-4 md:mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white via-gray-200 to-gray-500">Access the Source</h2>
+                    <p className="text-lg md:text-xl text-gray-400 font-light">
                         Three pathways to master your reality.
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-8 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-start">
                     {plans.map((p, i) => (
                         <motion.div
                             key={i}

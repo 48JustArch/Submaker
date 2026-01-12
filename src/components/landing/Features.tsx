@@ -36,13 +36,13 @@ const features = [
 
 export default function Features() {
     return (
-        <section className="py-32 px-6 relative overflow-hidden bg-[#030303]">
+        <section className="py-16 md:py-32 px-4 md:px-6 relative overflow-hidden bg-[#030303]">
             <div className="max-w-6xl mx-auto relative z-10">
-                <div className="mb-24 max-w-3xl">
-                    <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6 text-white">
+                <div className="mb-12 md:mb-24 max-w-3xl">
+                    <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-4 md:mb-6 text-white">
                         Beyond <span className="text-gray-400">Perception.</span>
                     </h2>
-                    <p className="text-xl text-gray-500 leading-relaxed font-light">
+                    <p className="text-lg md:text-xl text-gray-500 leading-relaxed font-light">
                         The subconscious mind processes 11 million bits of information per second.
                         We built the language to speak to it directly. No filters. No resistance.
                         Just pure, targeted evolution.
@@ -58,7 +58,7 @@ export default function Features() {
                             viewport={{ once: true, margin: "-50px" }}
                             transition={{ delay: i * 0.1, duration: 0.5 }}
                             className={`
-                                group relative overflow-hidden rounded-2xl p-8 
+                                group relative overflow-hidden rounded-2xl p-6 md:p-8 
                                 border border-white/[0.08] bg-[#0a0a0a] 
                                 hover:bg-[#0f0f0f] hover:border-white/[0.12] transition-all duration-300
                                 ${f.className}

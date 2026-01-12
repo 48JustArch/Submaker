@@ -5,10 +5,11 @@ import { Twitter, Youtube, Instagram, Mail } from 'lucide-react';
 
 export default function Footer() {
     return (
-        <footer className="py-16 px-6 border-t border-white/5 bg-[#050505]">
+    return (
+        <footer className="py-12 md:py-16 px-4 md:px-6 border-t border-white/5 bg-[#050505]">
             <div className="max-w-7xl mx-auto">
                 {/* Main Footer Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8 md:mb-12">
                     {/* Brand Column */}
                     <div className="col-span-2 md:col-span-1">
                         <div className="flex items-center gap-2 text-white font-bold tracking-tighter mb-4">

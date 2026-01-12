@@ -246,25 +246,25 @@ export default function Timeline({
     };
 
     // --- Track Item Dragging (Move & Trim) ---
-    const handleTrimStart = (e: React.MouseEvent, trackId: string, handle: 'left' | 'right') => {
+    const handleTrimStart = (e: React.MouseEvent | React.TouchEvent, trackId: string, handle: 'left' | 'right') => {
         e.stopPropagation();
-        e.preventDefault();
+        // e.preventDefault();
         const track = tracks.find(t => t.id === trackId);
         if (!track) return;
 
         setTrimDrag({
             trackId,
             handle,
-            startX: e.clientX,
+            startX: getClientX(e),
             initialInPoint: track.inPoint || 0,
             initialOutPoint: track.outPoint || track.duration,
             initialStartTime: track.startTime || 0
         });
     };
 
-    const handleTrackMoveStart = (e: React.MouseEvent, trackId: string) => {
+    const handleTrackMoveStart = (e: React.MouseEvent | React.TouchEvent, trackId: string) => {
         e.stopPropagation();
-        e.preventDefault();
+        // e.preventDefault();
         const track = tracks.find(t => t.id === trackId);
         if (!track) return;
 
@@ -272,19 +272,29 @@ export default function Timeline({
 
         setTrackDrag({
             trackId,
-            startX: e.clientX,
+            startX: getClientX(e),
             initialStartTime: track.startTime || 0
         });
     };
 
-    // Global Mouse Listeners for Dragging
+    // Unified coordinate extractor for Mouse and Touch events
+    const getClientX = (e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) => {
+        if ('touches' in e) {
+            return e.touches[0].clientX;
+        }
+        return (e as MouseEvent).clientX;
+    };
+
+    // Global Listeners for Dragging (Mouse & Touch)
     useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
+        const handleMove = (e: MouseEvent | TouchEvent) => {
+            const clientX = getClientX(e);
+
             if (trimDrag) {
                 const track = tracks.find(t => t.id === trimDrag.trackId);
                 if (!track) return;
 
-                const deltaPixels = e.clientX - trimDrag.startX;
+                const deltaPixels = clientX - trimDrag.startX;
                 const deltaTime = deltaPixels / zoom;
 
                 if (trimDrag.handle === 'left') {
@@ -301,26 +311,30 @@ export default function Timeline({
                     }
                 }
             } else if (trackDrag) {
-                const deltaPixels = e.clientX - trackDrag.startX;
+                const deltaPixels = clientX - trackDrag.startX;
                 const deltaTime = deltaPixels / zoom;
                 const newStartTime = Math.max(0, trackDrag.initialStartTime + deltaTime);
                 onUpdateTrack(trackDrag.trackId, { startTime: newStartTime });
             }
         };
 
-        const handleMouseUp = () => {
+        const handleUp = () => {
             setTrimDrag(null);
             setTrackDrag(null);
         };
 
         if (trimDrag || trackDrag) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', handleUp);
+            window.addEventListener('touchmove', handleMove, { passive: false });
+            window.addEventListener('touchend', handleUp);
         }
 
         return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleUp);
+            window.removeEventListener('touchmove', handleMove);
+            window.removeEventListener('touchend', handleUp);
         };
     }, [trimDrag, trackDrag, zoom, tracks, onUpdateTrack]);
 
@@ -545,7 +559,7 @@ export default function Timeline({
                                     onClick={() => onSelectTrack(track.id)}
                                 >
                                     <div
-                                        className="absolute top-2 bottom-2 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing border border-white/10 hover:border-white/20 transition-all select-none shadow-sm"
+                                        className="absolute top-2 bottom-2 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing border border-white/10 hover:border-white/20 transition-all select-none shadow-sm touch-none"
                                         style={{
                                             left: (track.startTime || 0) * zoom,
                                             width: Math.max(2, effectiveDuration * zoom),
@@ -557,6 +571,7 @@ export default function Timeline({
                                                 : 'rgba(255,255,255,0.1)'
                                         }}
                                         onMouseDown={(e) => handleTrackMoveStart(e, track.id)}
+                                        onTouchStart={(e) => handleTrackMoveStart(e, track.id)}
                                     >
                                         {/* Audio Waveform */}
                                         {track.type === 'audio' && (
@@ -590,14 +605,16 @@ export default function Timeline({
 
                                         {/* Resize Handles */}
                                         <div
-                                            className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-white/20 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="absolute left-0 top-0 bottom-0 w-8 cursor-ew-resize hover:bg-white/20 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity touch-none"
                                             onMouseDown={(e) => handleTrimStart(e, track.id, 'left')}
+                                            onTouchStart={(e) => handleTrimStart(e, track.id, 'left')}
                                         >
                                             <div className="w-1 h-4 bg-white/50 rounded-full" />
                                         </div>
                                         <div
-                                            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-white/20 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="absolute right-0 top-0 bottom-0 w-8 cursor-ew-resize hover:bg-white/20 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity touch-none"
                                             onMouseDown={(e) => handleTrimStart(e, track.id, 'right')}
+                                            onTouchStart={(e) => handleTrimStart(e, track.id, 'right')}
                                         >
                                             <div className="w-1 h-4 bg-white/50 rounded-full" />
                                         </div>

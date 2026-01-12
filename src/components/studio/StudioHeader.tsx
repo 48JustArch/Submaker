@@ -62,7 +62,7 @@ export default function StudioHeader({
             className="h-16 bg-[#050505]/95 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between px-5 sticky top-0 z-50"
         >
             {/* ===== LEFT SECTION ===== */}
-            <div className="flex items-center gap-4 w-[280px]">
+            <div className="flex items-center gap-4 w-auto flex-1 md:flex-none md:w-[280px]">
                 {/* Back Button */}
                 <Link href="/dashboard" aria-label="Back to dashboard">
                     <motion.div
@@ -104,7 +104,7 @@ export default function StudioHeader({
                                     >
                                         <Save className="w-2.5 h-2.5" />
                                     </motion.div>
-                                    <span>Saving...</span>
+                                    <span className="hidden sm:inline">Saving...</span>
                                 </motion.div>
                             ) : (
                                 <motion.div
@@ -114,7 +114,7 @@ export default function StudioHeader({
                                     className="flex items-center gap-1.5 text-[10px] text-gray-500"
                                 >
                                     {lastSaved && <Check className="w-2.5 h-2.5 text-emerald-500" />}
-                                    <span>{lastSavedText}</span>
+                                    <span className="hidden sm:inline">{lastSavedText}</span>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -123,9 +123,9 @@ export default function StudioHeader({
             </div>
 
             {/* ===== CENTER SECTION ===== */}
-            <div className="flex items-center gap-6">
-                {/* Mode Toggle - Clean Design */}
-                <div className="relative bg-[#1a1a1a] p-1 rounded-lg border border-white/[0.06]">
+            <div className="flex items-center gap-2 md:gap-6">
+                {/* Mode Toggle - Clean Design (Hidden on Mobile) */}
+                <div className="hidden md:block relative bg-[#1a1a1a] p-1 rounded-lg border border-white/[0.06]">
                     {/* Active Indicator */}
                     <motion.div
                         className="absolute top-1 bottom-1 rounded-[6px] bg-white/[0.1] border border-white/[0.06]"
@@ -163,12 +163,12 @@ export default function StudioHeader({
 
                 {/* Transport Controls */}
                 <div className="flex items-center gap-3">
-                    {/* Stop Button */}
+                    {/* Stop Button (Hidden on Mobile) */}
                     <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={onStop}
-                        className="w-9 h-9 rounded-md flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        className="hidden md:flex w-9 h-9 rounded-md items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
                         title="Stop"
                         aria-label="Stop playback"
                     >
@@ -182,7 +182,7 @@ export default function StudioHeader({
                         onClick={() => setIsPlaying(!isPlaying)}
                         aria-label={isPlaying ? 'Pause playback' : 'Start playback'}
                         aria-pressed={isPlaying}
-                        className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all ${isPlaying
+                        className={`relative w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all ${isPlaying
                             ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]'
                             : 'bg-blue-600 text-white shadow-[0_0_25px_rgba(37,99,235,0.4)] hover:bg-blue-500'
                             }`}
@@ -210,17 +210,17 @@ export default function StudioHeader({
                                 className="relative z-10"
                             >
                                 {isPlaying ? (
-                                    <Pause className="w-5 h-5 fill-current" />
+                                    <Pause className="w-4 h-4 md:w-5 md:h-5 fill-current" />
                                 ) : (
-                                    <Play className="w-5 h-5 fill-current ml-0.5" />
+                                    <Play className="w-4 h-4 md:w-5 md:h-5 fill-current ml-0.5" />
                                 )}
                             </motion.div>
                         </AnimatePresence>
                     </motion.button>
 
-                    {/* Time Display */}
+                    {/* Time Display (Hidden on Mobile) */}
                     <div
-                        className="font-mono text-sm text-white tabular-nums tracking-wider bg-black/40 px-4 py-2 rounded-lg border border-white/[0.06] min-w-[90px] text-center"
+                        className="hidden md:block font-mono text-sm text-white tabular-nums tracking-wider bg-black/40 px-4 py-2 rounded-lg border border-white/[0.06] min-w-[90px] text-center"
                         aria-label="Current playback time"
                         role="timer"
                     >
@@ -230,9 +230,9 @@ export default function StudioHeader({
             </div>
 
             {/* ===== RIGHT SECTION ===== */}
-            <div className="flex items-center gap-2 w-[280px] justify-end">
-                {/* Undo/Redo */}
-                <div className="flex items-center gap-0.5 mr-2">
+            <div className="flex items-center gap-2 w-auto md:w-[280px] justify-end">
+                {/* Undo/Redo (Hidden on Mobile) */}
+                <div className="hidden md:flex items-center gap-0.5 mr-2">
                     <motion.button
                         whileHover={canUndo ? { scale: 1.05 } : {}}
                         whileTap={canUndo ? { scale: 0.95 } : {}}
@@ -261,8 +261,8 @@ export default function StudioHeader({
                     </motion.button>
                 </div>
 
-                {/* Divider */}
-                <div className="w-px h-6 bg-white/[0.06] mx-2" />
+                {/* Divider (Hidden on Mobile) */}
+                <div className="hidden md:block w-px h-6 bg-white/[0.06] mx-2" />
 
                 {/* Export Button - Clean Blue/White */}
                 <motion.button
@@ -270,25 +270,25 @@ export default function StudioHeader({
                     whileTap={{ scale: 0.98 }}
                     onClick={onExport}
                     aria-label="Export project (Ctrl+E)"
-                    className="px-4 py-2 bg-white/[0.06] hover:bg-white/[0.1] text-white rounded-lg text-xs font-semibold flex items-center gap-2 border border-white/[0.06] transition-all"
+                    className="px-3 md:px-4 py-2 bg-white/[0.06] hover:bg-white/[0.1] text-white rounded-lg text-xs font-semibold flex items-center gap-2 border border-white/[0.06] transition-all"
                 >
                     <Download className="w-3.5 h-3.5" />
-                    Export
+                    <span className="hidden md:inline">Export</span>
                 </motion.button>
 
-                {/* Settings Button */}
+                {/* Settings Button (Hidden on Mobile) */}
                 <motion.button
                     whileHover={{ scale: 1.05, rotate: 15 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={onSettings}
                     aria-label="Open settings"
-                    className="w-9 h-9 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.1] transition-all"
+                    className="hidden md:flex w-9 h-9 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.1] transition-all"
                 >
                     <Settings className="w-4 h-4" />
                 </motion.button>
 
-                {/* Keyboard Shortcuts Hint */}
-                <div className="relative group">
+                {/* Keyboard Shortcuts Hint (Hidden on Mobile) */}
+                <div className="hidden md:block relative group">
                     <div className="w-6 h-6 rounded bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-[10px] font-bold text-gray-500 hover:text-white transition-colors cursor-help">
                         ?
                     </div>
