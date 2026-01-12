@@ -134,8 +134,29 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShor
     );
 }
 
-// Hook to trigger the modal
-export function useKeyboardShortcuts() {
+// Hook to trigger the modal and handle shortcuts
+export interface UseKeyboardShortcutsProps {
+    handleUndo?: () => void;
+    handleRedo?: () => void;
+    handleDelete?: () => void;
+    handlePlayPause?: () => void;
+    handleSave?: () => void;
+    handleExport?: () => void;
+    canUndo?: boolean; // Optional state for conditional logic inside hook if needed later
+    canRedo?: boolean;
+    isPlaying?: boolean;
+}
+
+export function useKeyboardShortcuts(props: UseKeyboardShortcutsProps = {}) {
+    const {
+        handleUndo,
+        handleRedo,
+        handleDelete,
+        handlePlayPause,
+        handleSave,
+        handleExport
+    } = props;
+
     const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
@@ -145,13 +166,53 @@ export function useKeyboardShortcuts() {
                 return;
             }
 
+            // Help
             if (e.key === '?') {
+                e.preventDefault();
                 setIsOpen(prev => !prev);
+                return;
+            }
+
+            // Play/Pause
+            if (e.code === 'Space' && handlePlayPause) {
+                e.preventDefault();
+                handlePlayPause();
+            }
+
+            // Save
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && handleSave) {
+                e.preventDefault();
+                handleSave();
+            }
+
+            // Export
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e' && handleExport) {
+                e.preventDefault();
+                handleExport();
+            }
+
+            // Undo/Redo
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey && handleRedo) {
+                    handleRedo();
+                } else if (handleUndo) {
+                    handleUndo();
+                }
+            }
+
+            // Delete
+            if ((e.key === 'Delete' || e.key === 'Backspace') && handleDelete) {
+                // Only prevent default if we have a handler, to avoid blocking backspace navigation elsewhere 
+                // (though strictly usually okay if not in input)
+                e.preventDefault();
+                handleDelete();
             }
         };
+
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [handleUndo, handleRedo, handleDelete, handlePlayPause, handleSave, handleExport]);
 
     return { isOpen, setIsOpen, openHelp: () => setIsOpen(true), closeHelp: () => setIsOpen(false) };
 }
