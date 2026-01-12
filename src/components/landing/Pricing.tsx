@@ -32,7 +32,7 @@ const plans = [
 
 export default function Pricing() {
     return (
-    return (
+
         <section id="pricing" className="py-16 md:py-32 px-4 md:px-6 border-t border-white/5 relative overflow-hidden">
             {/* Ambient Background Glow - Silver/White */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-white/5 blur-[120px] rounded-full pointer-events-none" />
