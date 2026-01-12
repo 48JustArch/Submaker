@@ -3,16 +3,50 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Menu, X, Zap, Brain, Mic2, Waves, Activity, Sparkles, AudioWaveform, Network } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ChevronDown, Menu, X, Zap, Brain, Mic2, Waves, Activity, Sparkles, AudioWaveform, Network, LogOut } from 'lucide-react';
+
+import { createClient } from '@/lib/supabase/client';
 
 export default function GlassNavbar() {
     const [scrolled, setScrolled] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+    const [user, setUser] = useState<any>(null);
+    const supabase = createClient();
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        setUser(null);
+        router.refresh();
+    };
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
+
+        // Check auth status
+        const checkUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('is_banned')
+                    .eq('id', user.id)
+                    .single();
+
+                if (profile?.is_banned) {
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    window.location.href = '/banned';
+                    return;
+                }
+            }
+            setUser(user);
+        };
+        checkUser();
+
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
@@ -105,12 +139,30 @@ export default function GlassNavbar() {
 
                 {/* Right: Actions */}
                 <div className="hidden md:flex items-center gap-3 relative z-50">
-                    <Link
-                        href="/login"
-                        className="px-6 py-2 rounded-full bg-white text-black text-xs font-bold tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-transform uppercase"
-                    >
-                        Login
-                    </Link>
+                    {user ? (
+                        <>
+                            <Link
+                                href="/dashboard"
+                                className="px-6 py-2 rounded-full bg-white text-black text-xs font-bold tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-transform uppercase"
+                            >
+                                Dashboard
+                            </Link>
+                            <button
+                                onClick={handleSignOut}
+                                className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+                                title="Sign Out"
+                            >
+                                <LogOut className="w-4 h-4" />
+                            </button>
+                        </>
+                    ) : (
+                        <Link
+                            href="/login"
+                            className="px-6 py-2 rounded-full bg-white text-black text-xs font-bold tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-transform uppercase"
+                        >
+                            Login
+                        </Link>
+                    )}
                 </div>
 
                 {/* Mobile Toggle */}

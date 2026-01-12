@@ -1,16 +1,17 @@
 import { createClient } from '@/lib/supabase/client'
-import { isAdminEmail } from '@/lib/config'
+import { isAdminRole, type UserRole } from '@/lib/config'
 
 export interface AudioGeneration {
     id: string
     created_at: string
+    updated_at?: string;
     user_id: string
     title: string
     intention: string | null
     file_path: string | null
     duration_seconds: number | null
     status: 'draft' | 'processing' | 'completed' | 'failed'
-    metadata: Record<string, unknown> | null
+    metadata?: any;
     audio_type: 'mp3' | 'mp4' | 'wav' | null
     audio_url: string | null
     is_closed: boolean
@@ -24,6 +25,8 @@ export interface UserProfile {
     plan: string
     generations_used: number
     generations_limit: number
+    is_banned?: boolean
+    role?: 'user' | 'moderator' | 'admin' | 'super_admin'
 }
 
 // Create a new session (audio generation entry)
@@ -272,13 +275,28 @@ export async function incrementGenerationCount(userId: string): Promise<boolean>
     return true
 }
 
+// Helper: Check if current user is admin
+async function isCurrentUserAdmin(): Promise<boolean> {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return false
+
+    const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    return isAdminRole(profile?.role as UserRole | null)
+}
+
 // Ban/Unban user (Admin only)
 export async function toggleUserBan(userId: string, shouldBan: boolean): Promise<boolean> {
     const supabase = createClient()
 
     // Check if current user is admin first (extra security layer)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!isAdminEmail(user?.email)) {
+    if (!await isCurrentUserAdmin()) {
         console.error('Unauthorized: Only admin can ban users')
         return false
     }
@@ -316,8 +334,7 @@ export async function resetGenerationCount(userId: string): Promise<boolean> {
     const supabase = createClient()
 
     // Check if current user is admin first (extra security layer)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!isAdminEmail(user?.email)) {
+    if (!await isCurrentUserAdmin()) {
         console.error('Unauthorized: Only admin can reset generation counts')
         return false
     }

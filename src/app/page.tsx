@@ -12,8 +12,8 @@ export default function Home() {
       <main>
         <Hero />
         <Features />
-        <SocialProof />
         <Pricing />
+        <SocialProof />
       </main>
       <Footer />
     </>

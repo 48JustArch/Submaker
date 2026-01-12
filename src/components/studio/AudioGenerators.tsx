@@ -204,6 +204,22 @@ export default function AudioGenerators({ onClose, onAddTrack }: AudioGenerators
         setIsGenerating(true);
         setError(null);
 
+        // Rate Limit Check
+        try {
+            const rlRes = await fetch('/api/security/rate-limit', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'generate' })
+            });
+            if (!rlRes.ok) {
+                const data = await rlRes.json();
+                throw new Error(data.error || 'Rate limit exceeded');
+            }
+        } catch (err: any) {
+            setError(err.message);
+            setIsGenerating(false);
+            return;
+        }
+
         try {
             const res = await fetch('/api/generate', {
                 method: 'POST',

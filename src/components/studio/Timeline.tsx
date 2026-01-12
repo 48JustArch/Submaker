@@ -334,16 +334,24 @@ export default function Timeline({
             onDrop={handleDrop}
         >
             {/* === Toolbar === */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.04] bg-[#0a0a0a]/80 backdrop-blur z-20 sticky top-0">
+            <div
+                className="flex items-center justify-between px-4 py-2 border-b border-white/[0.04] bg-[#0a0a0a]/80 backdrop-blur z-20 sticky top-0"
+                role="toolbar"
+                aria-label="Timeline controls"
+            >
                 <div className="flex items-center gap-4">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">TIMELINE</span>
 
                     <div className="h-4 w-px bg-white/[0.08]" />
 
                     {/* Zoom Controls */}
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => setZoom(Math.max(2, zoom / 1.5))} className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-white transition-colors">
-                            <ZoomOut className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-2" role="group" aria-label="Zoom controls">
+                        <button
+                            onClick={() => setZoom(Math.max(2, zoom / 1.5))}
+                            className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-white transition-colors"
+                            aria-label="Zoom out"
+                        >
+                            <ZoomOut className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                         <input
                             type="range"
@@ -354,11 +362,16 @@ export default function Timeline({
                             onChange={(e) => setZoom(parseFloat(e.target.value))}
                             className="w-24 h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
                             title={`Visible: ${Math.round(1000 / zoom)}s`}
+                            aria-label={`Zoom level: ${Math.round(zoom)} pixels per second`}
                         />
-                        <button onClick={() => setZoom(Math.min(300, zoom * 1.5))} className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-white transition-colors">
-                            <ZoomIn className="w-3.5 h-3.5" />
+                        <button
+                            onClick={() => setZoom(Math.min(300, zoom * 1.5))}
+                            className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-white transition-colors"
+                            aria-label="Zoom in"
+                        >
+                            <ZoomIn className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
-                        <span className="text-[9px] text-gray-600 font-mono ml-1 w-10 text-right">
+                        <span className="text-[9px] text-gray-600 font-mono ml-1 w-10 text-right" aria-hidden="true">
                             {Math.round(zoom)}px/s
                         </span>
                     </div>

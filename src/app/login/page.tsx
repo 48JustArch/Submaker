@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
 
@@ -17,6 +17,17 @@ export default function LoginPage() {
     const router = useRouter();
     const supabase = createClient();
     const { showToast } = useToast();
+
+    // Check if already logged in
+    useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                router.replace('/dashboard');
+            }
+        };
+        checkSession();
+    }, [router, supabase]);
 
     const handleGoogleLogin = async () => {
         setLoading(true);
@@ -40,6 +51,22 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError(null);
+
+        // Rate Limit Check
+        try {
+            const rlRes = await fetch('/api/security/rate-limit', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'login' })
+            });
+            if (!rlRes.ok) {
+                const data = await rlRes.json();
+                throw new Error(data.error || 'Rate limit exceeded');
+            }
+        } catch (err: any) {
+            setError(err.message);
+            setLoading(false);
+            return;
+        }
 
         try {
             if (mode === 'signup') {
@@ -79,18 +106,18 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-            {/* Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-900/10 blur-[100px] rounded-full pointer-events-none" />
+            {/* Background Glow - Silver */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/5 blur-[120px] rounded-full pointer-events-none" />
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md"
+                className="w-full max-w-md relative z-10"
             >
                 {/* Logo */}
                 <div className="flex justify-center mb-8">
                     <Link href="/" className="flex items-center gap-2 text-2xl font-bold tracking-tighter text-white">
-                        <div className="w-4 h-4 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
+                        <div className="w-4 h-4 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)]" />
                         Submaker
                     </Link>
                 </div>
@@ -107,7 +134,7 @@ export default function LoginPage() {
                     <button
                         onClick={handleGoogleLogin}
                         disabled={loading}
-                        className="w-full h-12 bg-white text-black font-semibold rounded-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors mb-6 group disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full h-12 bg-white text-black font-semibold rounded-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-all mb-6 group disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                             <path
@@ -152,7 +179,7 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="name@example.com"
-                                className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
+                                className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white placeholder-gray-600 focus:outline-none focus:border-white/50 focus:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all"
                                 required
                             />
                         </div>
@@ -162,7 +189,7 @@ export default function LoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="password"
-                                className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
+                                className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-white placeholder-gray-600 focus:outline-none focus:border-white/50 focus:shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-all"
                                 required
                                 minLength={6}
                             />
@@ -170,7 +197,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full h-12 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full h-12 bg-white text-black font-semibold rounded-xl hover:scale-[1.02] shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_35px_rgba(255,255,255,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                             {mode === 'signin' ? 'Sign In' : 'Create Account'}

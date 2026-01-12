@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getUserSessions, ensureUserProfile, deleteSession, type AudioGeneration, type UserProfile } from '@/lib/supabase/sessions';
-import { isAdminEmail } from '@/lib/config';
+import { isAdminRole } from '@/lib/config';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 
@@ -55,6 +55,8 @@ export default function Dashboard() {
         router.push('/login');
     };
 
+
+
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour < 12) return 'Good morning';
@@ -68,14 +70,17 @@ export default function Dashboard() {
         return 'Creator';
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
+    const formatTimeAgo = (dateInput: string | Date | undefined) => {
+        if (!dateInput) return '';
+        const date = new Date(dateInput);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / (1000 * 60));
         const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-        if (diffHours < 1) return 'Just now';
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays < 7) return `${diffDays}d ago`;
         return date.toLocaleDateString();
@@ -134,7 +139,7 @@ export default function Dashboard() {
         return '';
     };
 
-    const isAdmin = isAdminEmail(user?.email);
+    const isAdmin = isAdminRole(profile?.role);
     const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
 
     if (loading) {
@@ -178,6 +183,8 @@ export default function Dashboard() {
                     >
                         <LogOut className="w-5 h-5" />
                     </button>
+
+
 
                     {avatarUrl ? (
                         <img
@@ -261,7 +268,9 @@ export default function Dashboard() {
                                             <h4 className="font-medium text-white">{session.title || 'Untitled Session'}</h4>
                                             <div className="flex items-center gap-2 text-xs text-gray-500">
                                                 <Clock className="w-3 h-3" />
-                                                <span>{formatDate(session.created_at)}</span>
+                                                <span>
+                                                    {session.updated_at ? `Edited ${formatTimeAgo(new Date(session.updated_at))}` : `Created ${formatTimeAgo(new Date(session.created_at))}`}
+                                                </span>
                                                 {session.audio_type && (
                                                     <>
                                                         <span className="w-1 h-1 bg-gray-700 rounded-full" />

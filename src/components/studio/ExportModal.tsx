@@ -105,6 +105,11 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
     };
 
     const performExport = async () => {
+        if (tracks.length === 0) {
+            setError("No tracks to export. Please add at least one track.");
+            return;
+        }
+
         try {
             setStep('exporting');
             setIsExporting(true);
@@ -112,9 +117,7 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
 
             const audioTracks = tracks.filter(t => t.type === 'audio');
             const visualTrack = tracks.find(t => t.type === 'video' || t.type === 'image');
-            const duration = Math.max(...tracks.map(t => t.duration)) || 10;
-
-            if (tracks.length === 0) throw new Error("No tracks to export.");
+            const duration = tracks.length > 0 ? Math.max(...tracks.map(t => t.duration)) : 10;
 
             // --- AUDIO RENDERING ---
             setStatusMessage('Rendering audio mix...');
@@ -176,13 +179,33 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
             if (format === 'mp4') {
                 setStatusMessage('Initializing video recorder...');
 
-                let mimeType = 'video/webm;codecs=vp9';
+                // Prioritize H.264 + AAC (Most compatible)
+                const types = [
+                    'video/mp4; codecs="avc1.4d002a, mp4a.40.2"', // H.264 + AAC (Standard MP4)
+                    'video/mp4', // Generic MP4
+                    'video/webm; codecs=vp9', // Modern WebM
+                    'video/webm; codecs=vp8', // Legacy WebM
+                    'video/webm' // Generic WebM
+                ];
+
+                let mimeType = '';
                 let ext = 'webm';
-                if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4')) {
-                    mimeType = 'video/mp4';
-                    ext = 'mp4';
+
+                for (const type of types) {
+                    if (MediaRecorder.isTypeSupported(type)) {
+                        mimeType = type;
+                        ext = type.includes('mp4') ? 'mp4' : 'webm';
+                        break;
+                    }
                 }
+
+                if (!mimeType) {
+                    mimeType = 'video/webm'; // Last resort
+                    ext = 'webm';
+                }
+
                 setFileExtension(ext);
+                console.log(`Using MIME type: ${mimeType}, Extension: ${ext}`);
 
                 const canvas = document.createElement('canvas');
                 canvas.width = 1920;
@@ -227,6 +250,7 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
                     ...dest.stream.getAudioTracks()
                 ]);
 
+                // 8 Mbps video + 128 kbps audio approx
                 const recorder = new MediaRecorder(combinedStream, { mimeType, videoBitsPerSecond: 8000000 });
                 const chunks: Blob[] = [];
                 recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
@@ -263,7 +287,6 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
 
                 await finishExport(URL.createObjectURL(new Blob(chunks, { type: mimeType })));
             }
-
         } catch (err: any) {
             console.error(err);
             setError(err.message || "Export failed");
@@ -286,6 +309,22 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
             router.push('/dashboard');
         }
     };
+
+    // Calculate dynamic size
+    const duration = Math.max(...tracks.map(t => t.duration) || [0]) || 0;
+    const getEstimatedSize = () => {
+        if (format === 'wav') {
+            // 44.1kHz * 16-bit * 2 channels = ~176.4 KB/s
+            // (sampleRate * bitDepth/8 * channels * duration)
+            const sizeBytes = 44100 * 2 * 2 * duration;
+            return `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`;
+        } else {
+            // Video: 8 Mbps + Audio 128 kbps = ~1 MB/s
+            // (8000000 + 128000) / 8 * duration
+            const sizeBytes = (8128000 / 8) * duration;
+            return `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`;
+        }
+    }
 
     if (!isOpen) return null;
 
@@ -338,7 +377,7 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
                                             >
                                                 <FileAudio className={`w-6 h-6 mb-3 ${format === 'wav' ? 'text-blue-400' : 'text-gray-600'}`} />
                                                 <div className="text-sm font-bold mb-0.5">WAV Audio</div>
-                                                <div className="text-[10px] opacity-60">High Quality .wav</div>
+                                                <div className="text-[10px] opacity-60">Highest Audio Quality .wav</div>
                                             </button>
 
                                             <button
@@ -347,7 +386,7 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
                                             >
                                                 <Video className={`w-6 h-6 mb-3 ${format === 'mp4' ? 'text-blue-400' : 'text-gray-600'}`} />
                                                 <div className="text-sm font-bold mb-0.5">MP4 Video</div>
-                                                <div className="text-[10px] opacity-60">Video + Audio Mix</div>
+                                                <div className="text-[10px] opacity-60">Standard Video + Audio</div>
                                             </button>
                                         </div>
                                     </div>
@@ -355,12 +394,12 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
                                     <div className="bg-[#141414] rounded-xl p-4 border border-white/[0.04]">
                                         <div className="flex justify-between items-center text-xs mb-2">
                                             <span className="text-gray-500">Estimated Size</span>
-                                            <span className="text-white font-mono">{format === 'wav' ? '~45 MB' : '~150 MB'}</span>
+                                            <span className="text-white font-mono">{getEstimatedSize()}</span>
                                         </div>
                                         <div className="flex justify-between items-center text-xs">
                                             <span className="text-gray-500">Duration</span>
                                             <span className="text-white font-mono">
-                                                {Math.floor(Math.max(...tracks.map(t => t.duration) || [0]) / 60)}:{(Math.max(...tracks.map(t => t.duration) || [0]) % 60).toFixed(0).padStart(2, '0')}
+                                                {Math.floor(duration / 60)}:{(duration % 60).toFixed(0).padStart(2, '0')}
                                             </span>
                                         </div>
                                     </div>
@@ -409,9 +448,10 @@ export default function ExportModal({ onClose, isOpen, tracks, sessionId, userId
                             {step === 'settings' && (
                                 <button
                                     onClick={performExport}
-                                    className={`w-full py-4 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 shadow-blue-900/20`}
+                                    disabled={tracks.length === 0}
+                                    className={`w-full py-4 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 ${tracks.length === 0 ? 'bg-gray-800 cursor-not-allowed text-gray-500 shadow-none' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'}`}
                                 >
-                                    Start Rendering <ChevronRight className="w-4 h-4" />
+                                    {tracks.length === 0 ? 'No Tracks to Export' : 'Start Rendering'} <ChevronRight className="w-4 h-4" />
                                 </button>
                             )}
 

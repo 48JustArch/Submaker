@@ -849,16 +849,12 @@ function StudioContent() {
     // It gets cleared when opening a new session from the dashboard.
 
     // Auto-save session with debounce
-    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    useEffect(() => {
-        // Clear previous timeout
-        if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-        }
+    // --- Session Persistence ---
+    // Note: Sessions now always start fresh. localStorage is only used for recovery.
 
-        // Debounce save by 1 second
-        saveTimeoutRef.current = setTimeout(async () => {
-            setIsSaving(true);
+    // 1. Fast Local Auto-save (Crash Recovery) - 1 second debounce
+    useEffect(() => {
+        const timer = setTimeout(() => {
             try {
                 const sessionData: SessionData = {
                     sessionName,
@@ -866,30 +862,62 @@ function StudioContent() {
                     zoom,
                     tracks: tracks.map(t => ({
                         ...t,
-                        file: undefined, // Can't serialize File objects
+                        file: undefined,
                         hasFile: !!t.file || !!t.url
                     })),
                     savedAt: new Date().toISOString()
                 };
                 localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+            } catch (e) {
+                console.error("Local save failed", e);
+            }
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, [sessionName, mode, zoom, tracks]);
 
-                // Sync full session state to database
-                if (sessionId) {
-                    await updateSessionData(sessionId, sessionName, sessionData);
-                }
+    // 2. Smart Cloud Auto-save (Database Sync)
+    const prevTrackCount = useRef(tracks.length);
+    const cloudSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    useEffect(() => {
+        // Determine save urgency
+        const isStructuralChange = tracks.length !== prevTrackCount.current;
+        prevTrackCount.current = tracks.length;
+
+        // Urgent (Add/Delete track) -> 2s, Minor (Volume/Pan) -> 15s
+        const debounceTime = isStructuralChange ? 2000 : 15000;
+
+        if (cloudSaveTimeoutRef.current) clearTimeout(cloudSaveTimeoutRef.current);
+
+        cloudSaveTimeoutRef.current = setTimeout(async () => {
+            if (!sessionId) return;
+
+            setIsSaving(true);
+            try {
+                // Re-construct data to ensure latest state
+                const sessionData: SessionData = {
+                    sessionName,
+                    mode,
+                    zoom,
+                    tracks: tracks.map(t => ({
+                        ...t,
+                        file: undefined,
+                        hasFile: !!t.file || !!t.url
+                    })),
+                    savedAt: new Date().toISOString()
+                };
+
+                await updateSessionData(sessionId, sessionName, sessionData);
                 setLastSaved(new Date());
             } catch (e) {
-                console.error('Failed to save session:', e);
+                console.error('Failed to sync to cloud:', e);
             } finally {
                 setIsSaving(false);
             }
-        }, 1000);
+        }, debounceTime);
 
         return () => {
-            if (saveTimeoutRef.current) {
-                clearTimeout(saveTimeoutRef.current);
-            }
+            if (cloudSaveTimeoutRef.current) clearTimeout(cloudSaveTimeoutRef.current);
         };
     }, [sessionName, mode, zoom, tracks, sessionId]);
 

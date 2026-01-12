@@ -476,3 +476,102 @@
         color: var(--accent-primary);
     }
 }
+
+/* ============================================
+   ACCESSIBILITY STYLES
+   ============================================ */
+
+/* Screen Reader Only - Visually hidden but accessible */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Focus Visible - Shows focus ring only for keyboard navigation */
+:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+/* For elements where standard outline doesn't work well */
+.focus-ring:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-deep), 0 0 0 4px var(--accent-primary);
+}
+
+/* Focus within container (for custom controls) */
+.focus-within-ring:focus-within {
+    box-shadow: 0 0 0 2px var(--bg-deep), 0 0 0 4px var(--accent-primary);
+    border-radius: 8px;
+}
+
+/* High contrast mode for buttons and interactive elements */
+@media (prefers-contrast: high) {
+    :root {
+        --border-subtle: rgba(255, 255, 255, 0.3);
+        --border-default: rgba(255, 255, 255, 0.5);
+        --text-secondary: #d1d1d6;
+    }
+
+    button,
+    [role="button"] {
+        border: 2px solid currentColor !important;
+    }
+}
+
+/* Reduced Motion - Respect user preferences */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Better focus for inputs */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 0;
+    border-color: var(--accent-primary);
+}
+
+/* Keyboard navigation indicator on body */
+body.keyboard-navigation *:focus {
+    outline: 2px solid var(--accent-primary) !important;
+    outline-offset: 2px !important;
+}
+
+/* Touch target minimum size (44x44 as per WCAG 2.1) */
+@media (pointer: coarse) {
+
+    button,
+    [role="button"],
+    input[type="checkbox"],
+    input[type="radio"],
+    .touch-target {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Accessible slider styling */
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px var(--bg-deep), 0 0 0 5px var(--accent-primary);
+}
+
+input[type="range"]:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px var(--bg-deep), 0 0 0 5px var(--accent-primary);
+}

@@ -3,6 +3,7 @@ import { Activity, Users, Music, Database, Clock, Mail, Download, FileText, Hard
 import Link from 'next/link'
 import { getActivityStats } from '@/lib/supabase/activity'
 import { getGlobalStorageStats, formatBytes } from '@/lib/supabase/storage'
+import MaintenanceToggle from '@/components/admin/MaintenanceToggle'
 
 interface StatsCardProps {
     title: string
@@ -64,15 +65,19 @@ export default async function AdminDashboard() {
         { data: recentUsers },
         { data: recentGenerations },
         activityStats,
-        storageStats
+        storageStats,
+        { data: settings }
     ] = await Promise.all([
         supabase.from('users').select('*', { count: 'exact', head: true }),
         supabase.from('audio_generations').select('*', { count: 'exact', head: true }),
         supabase.from('users').select('*').order('created_at', { ascending: false }).limit(5),
         supabase.from('audio_generations').select('*').order('created_at', { ascending: false }).limit(10),
         getActivityStats(),
-        getGlobalStorageStats()
+        getGlobalStorageStats(),
+        supabase.from('system_settings').select('value').eq('key', 'maintenance_mode').single()
     ])
+
+    const maintenanceMode = settings?.value?.enabled || false;
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString)
@@ -92,9 +97,14 @@ export default async function AdminDashboard() {
                     <p className="text-gray-500 text-sm mt-1">Manage users and view system status</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="text-sm text-gray-400">System Operational</span>
+                    <span className={`w-2 h-2 rounded-full animate-pulse ${maintenanceMode ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                    <span className="text-sm text-gray-400">{maintenanceMode ? 'Maintenance Mode' : 'System Operational'}</span>
                 </div>
+            </div>
+
+            {/* System Control */}
+            <div className="mb-8">
+                <MaintenanceToggle initialEnabled={maintenanceMode} />
             </div>
 
             {/* Stats Grid */}
