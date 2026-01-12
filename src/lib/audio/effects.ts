@@ -6,7 +6,7 @@
  */
 
 // Effect types that can be applied
-export type EffectType = 'reverb' | 'delay' | 'echo' | 'chorus' | 'subliminal-mask' | 'binaural-pan';
+export type EffectType = 'reverb' | 'delay' | 'echo' | 'chorus' | 'subliminal' | 'binaural-pan';
 
 // Parameters for each effect type
 export interface EffectParams {
@@ -29,7 +29,7 @@ export interface EffectParams {
         depth: number; // 0-20 ms
         wetDry: number; // 0-1
     };
-    'subliminal-mask': {
+    'subliminal': {
         maskVolume: number; // 0-1 (how much to reduce vocal clarity)
         noiseAmount: number; // 0-1
     };
@@ -45,7 +45,7 @@ export const DEFAULT_EFFECT_PARAMS: Record<EffectType, EffectParams[keyof Effect
     delay: { time: 0.3, feedback: 0.4, wetDry: 0.25 },
     echo: { delay: 0.25, feedback: 0.5, wetDry: 0.3 },
     chorus: { rate: 1.5, depth: 10, wetDry: 0.4 },
-    'subliminal-mask': { maskVolume: 0.7, noiseAmount: 0.3 },
+    'subliminal': { maskVolume: 0.7, noiseAmount: 0.3 },
     'binaural-pan': { frequency: 10, panRate: 0.5 },
 };
 
@@ -208,7 +208,7 @@ export function createChorusEffect(
  */
 export function createSubliminalMaskEffect(
     ctx: AudioContext | OfflineAudioContext,
-    params: EffectParams['subliminal-mask']
+    params: EffectParams['subliminal']
 ): { input: AudioNode; output: AudioNode; dispose: () => void } {
     const lowpass = ctx.createBiquadFilter();
     const gainNode = ctx.createGain();
@@ -317,11 +317,11 @@ export function createEffectChain(
                     ...effect.params
                 } as EffectParams['chorus']);
                 break;
-            case 'subliminal-mask':
+            case 'subliminal':
                 effectNode = createSubliminalMaskEffect(ctx, {
-                    ...DEFAULT_EFFECT_PARAMS['subliminal-mask'],
+                    ...DEFAULT_EFFECT_PARAMS['subliminal'],
                     ...effect.params
-                } as EffectParams['subliminal-mask']);
+                } as EffectParams['subliminal']);
                 break;
             case 'binaural-pan':
                 effectNode = createBinauralPanEffect(ctx, {
