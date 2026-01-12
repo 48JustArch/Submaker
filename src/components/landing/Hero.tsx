@@ -205,10 +205,15 @@ export default function Hero() {
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.1 }}
-                    className="text-4xl sm:text-6xl md:text-8xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/50 leading-[1.1]"
+                    className="text-4xl sm:text-6xl md:text-8xl font-bold tracking-tighter leading-[1.1]"
                 >
-                    Design your <br />
-                    subconscious.
+                    <span className="bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/50">
+                        Design your
+                    </span>
+                    <br />
+                    <span className="bg-clip-text text-transparent bg-gradient-to-b from-gray-100 via-gray-300 to-gray-500 filter drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+                        subconscious.
+                    </span>
                 </motion.h1>
 
                 {/* Clean Subtext */}
